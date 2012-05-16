@@ -3,6 +3,7 @@
 
 import sys
 import xapian
+import time
 import simplejson as json
 from collections import Counter
 import collections
@@ -117,11 +118,14 @@ class WeiboSearch(object):
                 keywords_arr.append(keywords_hash)
                 #keywords_counter += Counter(json.loads(m.document.get_value(self.keywordsvi)))
 
+            print 'mapreduce begin: ',str(time.strftime("%H:%M:%S", time.gmtime()))
             mapper = SimpleMapReduce(hasharr_to_list, count_words)
             word_counts = mapper(keywords_arr)
             keywords_hash = {}
             for word,count in word_counts:
                 keywords_hash[word] = count
+            print 'mapreduce end: ',str(time.strftime("%H:%M:%S", time.gmtime()))
+
             #print keywords_counter
             return hashtags,keywords_hash
 
