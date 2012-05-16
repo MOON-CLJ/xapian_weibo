@@ -133,8 +133,8 @@ print 'emotions',emotions
 #print 'keywords_hash',keywords_hash
 """
 hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
-print 'hashtags',hashtags
-print 'keywords_hash',keywords_hash
-for keyword in keywords_hash:
-    print keyword
+#print 'hashtags',hashtags
+#print 'keywords_hash',keywords_hash
+#for keyword in keywords_hash:
+#    print keyword
 
