@@ -83,9 +83,9 @@ try:
         doc.add_value(uidvi,uid)
 
         #-->text
-        text = weibo['text'].lower()
+        text = weibo['text']
         try:
-            text += ' ' + weibo['repost']['text'].lower()
+            text += ' ' + weibo['repost']['text']
         except:
             pass
 #        print 'orginal',text
