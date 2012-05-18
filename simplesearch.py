@@ -4,6 +4,7 @@
 import sys
 import xapian
 import time
+import datetime
 import simplejson as json
 from collections import Counter
 import collections
@@ -52,8 +53,8 @@ class WeiboSearch(object):
         self.emotionvi = 0
         self.keywordsvi = 1
         self.timestampvi = 2
-        #loctvi = 3
-        #reploctvi = 4
+        self.loctvi = 3
+        self.reploctvi = 4
         #emotiononlyvi = 5
         #usernamevi = 6
         self.hashtagsvi = 7
@@ -102,7 +103,7 @@ class WeiboSearch(object):
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
-            #matches = self.enquire.get_mset(0,1)
+            #matches = self.enquire.get_mset(0,10)
             matches = self.enquire.get_mset(0,self.maxitems)
 
             # Display the results.
@@ -129,6 +130,40 @@ class WeiboSearch(object):
             #print keywords_counter
             return hashtags,keywords_hash
 
+        if qtype == 'lh':
+            timequery = self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
+            timequerystr = begin+'..'+end
+            timequery = self.qp.parse_query(timequerystr)
+
+            hashtags = ['H' + hashtag.lower() for hashtag in hashtags]
+            keywords = [keyword.lower() for keyword in keywords]
+            keywords.extend(hashtags)
+            if len(keywords) > 0:
+                wordsquery = xapian.Query(xapian.Query.OP_OR,keywords)
+            else:
+                return None
+
+            query = xapian.Query(xapian.Query.OP_AND,[timequery,wordsquery])
+            print "Parsed query is: %s" % [str(query)]
+
+            self.enquire.set_query(query)
+            #matches = self.enquire.get_mset(0,10)
+            matches = self.enquire.get_mset(0,self.maxitems)
+
+            # Display the results.
+            print "%i results found." % matches.size()
+
+            results = []
+            for m in matches:
+                result = {}
+                result['location'] = m.document.get_value(self.loctvi)
+                result['repost_location'] = m.document.get_value(self.reploctvi)
+                result['timestamp'] = xapian.sortable_unserialise(m.document.get_value(self.timestampvi))
+                results.append(result)
+
+            return results
+
+
 #test
 search = WeiboSearch()
 """
@@ -136,9 +171,20 @@ emotions,keywords_hash = search.query(begin='0',end='131113198690',qtype='hy')
 print 'emotions',emotions
 #print 'keywords_hash',keywords_hash
 """
+
+"""
 hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
 #print 'hashtags',hashtags
 #print 'keywords_hash',keywords_hash
-#for keyword in keywords_hash:
-#    print keyword
+for keyword in keywords_hash:
+    print keyword
+"""
+timenow = datetime.datetime.now()
+begin = str(time.mktime((timenow + datetime.timedelta(days=-5)).timetuple()))
+end = str(time.mktime(timenow.timetuple()))
+
+#print search.query(begin=begin,end=end,qtype='lh',keywords=['RUNANDRUN'],hashtags=['Runningman'])
+for i in search.query(begin=begin,end=end,qtype='lh',keywords=['haha'],hashtags=['Runningman']):
+    print i
+
 

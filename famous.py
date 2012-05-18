@@ -5,7 +5,7 @@ import redis
 import time
 import re
 from bs4 import BeautifulSoup
-from fifo import WEIBOUidList 
+from fifo import WEIBOUidList
 
 browser = Browser('chrome', user_agent='Mozilla/5.0 (X11; Linux i686) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.162 Safari/535.19')
 url = "http://weibo.com"
@@ -14,21 +14,22 @@ SPROV = [['安徽','34'],['北京','11'],['重庆','50'],['福建','35'],['甘�
 #famous uids
 famous_uids = WEIBOUidList()
 
-
 #login
 def login(username,password):
     print 'login'
     browser.visit(url)
-    browser.find_by_id('loginname').fill(username)
-    button = browser.find_by_id("login_submit_btn")
+
+    browser.find_by_name('loginname').fill(username)
+    button = browser.find_by_css(".W_login .W_btn_d").first
     while True:
         try:
             print 'focus'
             button.click()
-            browser.find_by_id('password').first.click()
-            browser.find_by_id('password').fill(password)
+            browser.find_by_name('password').click()
+            browser.find_by_name('password').fill(password)
             break
-        except Exception:
+        except Exception, e:
+            print e
             continue
     button.click()
 
@@ -36,7 +37,8 @@ while True:
     try:
         login('lijunli2598@126.com', '563389034')
         break
-    except Exception:
+    except Exception, e:
+        print e
         continue
 
 while len(browser.title) == 18:
