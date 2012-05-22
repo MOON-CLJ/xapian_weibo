@@ -55,32 +55,39 @@ class WeiboSearch(object):
         self.timestampvi = 2
         self.loctvi = 3
         self.reploctvi = 4
-        #emotiononlyvi = 5
+        self.emotiononlyvi = 5
         #usernamevi = 6
         self.hashtagsvi = 7
         #uidvi = 8
         #repnameslistvi = 9
         self.maxitems = 1000000000
 
-    def query(self,querystring=None,qtype=None,begin=None,end=None,keywords=[],hashtags=[]):
+    def query(self,querystring=None,qtype=None,begin=None,end=None,keywords=[],hashtags=[],emotiononly=False):
         if qtype == 'hy':
-            query = self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
+            self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
             querystring = begin+'..'+end
+
+            if emotiononly:
+                self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.emotiononlyvi,'f',False))
+                querystring += ' 1.0..1.0f'
+
             query = self.qp.parse_query(querystring)
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
-            matches = self.enquire.get_mset(0,self.maxitems)
+            #matches = self.enquire.get_mset(0,self.maxitems)
+            matches = self.enquire.get_mset(0,10)
+
 
             # Display the results.
             print "%i results found." % matches.size()
 
-            emotions_set = set()
+            emotions_list = []
             #keywords_counter = Counter()
             keywords_arr = []
             for m in matches:
                 #emotion
-                emotions_set = emotions_set | set(m.document.get_value(self.emotionvi).split())
+                emotions_list.append(m.document.get_value(self.emotionvi).split())
                 #keywords
                 keywords_hash = json.loads(m.document.get_value(self.keywordsvi))
                 keywords_arr.append(keywords_hash)
@@ -89,15 +96,24 @@ class WeiboSearch(object):
             mapper = SimpleMapReduce(hasharr_to_list, count_words)
             #keywords_arr = [{'haha':1,"haha":2},{'haha':3}]
             word_counts = mapper(keywords_arr)
-            keywords_hash = {}
+            lowkeywords_set = set()
             for word,count in word_counts:
-                if count > 3:
-                    keywords_hash[word] = count
+                if count <= 3:
+                    lowkeywords_set.add(word)
+
+            keywords_list = []
+            for x in keywords_arr:
+                per_keywords_list = []
+                for keyword in x:
+                    if keyword not in lowkeywords_set:
+                        per_keywords_list.extend([keyword]*x[keyword])
+                keywords_list.append(per_keywords_list)
+
             #print keywords_counter
-            return emotions_set,keywords_hash
+            return emotions_list,keywords_list
 
         if qtype == 'yq':
-            query = self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
+            self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
             querystring = begin+'..'+end
             query = self.qp.parse_query(querystring)
             print "Parsed query is: %s" % [str(query)]
@@ -131,7 +147,7 @@ class WeiboSearch(object):
             return hashtags,keywords_hash
 
         if qtype == 'lh':
-            timequery = self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
+            self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
             timequerystr = begin+'..'+end
             timequery = self.qp.parse_query(timequerystr)
 
@@ -166,11 +182,15 @@ class WeiboSearch(object):
 
 #test
 search = WeiboSearch()
-"""
-emotions,keywords_hash = search.query(begin='0',end='131113198690',qtype='hy')
+
+timenow = datetime.datetime.now()
+begin = str(time.mktime((timenow + datetime.timedelta(days=-4)).timetuple()))
+end = str(time.mktime(timenow.timetuple()))
+
+emotions,keywords_list = search.query(begin=begin,end=end,qtype='hy',emotiononly=True)
 print 'emotions',emotions
-#print 'keywords_hash',keywords_hash
-"""
+print 'keywords_list',keywords_list
+
 
 """
 hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
@@ -179,6 +199,7 @@ hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
 for keyword in keywords_hash:
     print keyword
 """
+"""
 timenow = datetime.datetime.now()
 begin = str(time.mktime((timenow + datetime.timedelta(days=-5)).timetuple()))
 end = str(time.mktime(timenow.timetuple()))
@@ -186,5 +207,5 @@ end = str(time.mktime(timenow.timetuple()))
 #print search.query(begin=begin,end=end,qtype='lh',keywords=['RUNANDRUN'],hashtags=['Runningman'])
 for i in search.query(begin=begin,end=end,qtype='lh',keywords=['haha'],hashtags=['Runningman']):
     print i
-
+"""
 
