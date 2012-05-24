@@ -9,18 +9,19 @@ import simplejson as json
 import re
 import pymongo
 import scws
-import opencc
+#import opencc
 
 #print 'ictclas import', ictclas.ict_init("./")
 #print 'ictclas import userdict', ictclas.import_dict('userdic.txt')
 s = scws.Scws()
 s.set_charset('utf-8')
 s.set_dict('/usr/local/scws/etc/dict.utf8.xdb',scws.XDICT_MEM)
+s.add_dict('/usr/local/scws/etc/dict_cht.utf8.xdb',scws.XDICT_MEM)
 s.add_dict('userdic.txt',scws.XDICT_TXT)
 s.set_rules('/usr/local/scws/etc/rules.utf8.ini')
 s.set_ignore(1)
 
-cc = opencc.OpenCC('mix2s')
+#cc = opencc.OpenCC('mix2s')
 
 #connection = pymongo.Connection()
 
@@ -62,7 +63,8 @@ try:
             weibos = json.loads(line)
     """
     count = 0
-    for weibo in db.target_statuses.find():
+    for weibo in db.statuses.find():
+    #for weibo in db.target_statuses.find():
     #for weibo in weibos:
         #init
         count += 1
@@ -95,7 +97,7 @@ try:
             text += ' ' + weibo['repost']['text'].lower()
         except:
             pass
-        text = cc.convert(text)
+#        text = cc.convert(text)
 #        print 'orginal',text
         #content
         #doc.set_data(weibo['text'])
