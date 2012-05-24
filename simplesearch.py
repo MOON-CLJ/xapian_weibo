@@ -60,6 +60,7 @@ class WeiboSearch(object):
         self.hashtagsvi = 7
         #uidvi = 8
         #repnameslistvi = 9
+        #widvi = 10
         self.maxitems = 1000000000
 
     def query(self,querystring=None,qtype=None,begin=None,end=None,keywords=[],hashtags=[],emotiononly=False):
@@ -75,8 +76,8 @@ class WeiboSearch(object):
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
-            #matches = self.enquire.get_mset(0,self.maxitems)
-            matches = self.enquire.get_mset(0,10)
+            matches = self.enquire.get_mset(0,self.maxitems)
+            #matches = self.enquire.get_mset(0,10)
 
 
             # Display the results.
@@ -163,6 +164,7 @@ class WeiboSearch(object):
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
+            self.enquire.set_sort_by_value(self.timestampvi,False)
             #matches = self.enquire.get_mset(0,10)
             matches = self.enquire.get_mset(0,self.maxitems)
 
@@ -179,7 +181,7 @@ class WeiboSearch(object):
 
             return results
 
-
+"""
 #test
 search = WeiboSearch()
 
@@ -190,7 +192,7 @@ end = str(time.mktime(timenow.timetuple()))
 emotions,keywords_list = search.query(begin=begin,end=end,qtype='hy',emotiononly=True)
 print 'emotions',emotions
 print 'keywords_list',keywords_list
-
+"""
 
 """
 hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
@@ -201,11 +203,10 @@ for keyword in keywords_hash:
 """
 """
 timenow = datetime.datetime.now()
-begin = str(time.mktime((timenow + datetime.timedelta(days=-5)).timetuple()))
+begin = str(time.mktime((timenow + datetime.timedelta(days=-8)).timetuple()))
 end = str(time.mktime(timenow.timetuple()))
 
 #print search.query(begin=begin,end=end,qtype='lh',keywords=['RUNANDRUN'],hashtags=['Runningman'])
 for i in search.query(begin=begin,end=end,qtype='lh',keywords=['haha'],hashtags=['Runningman']):
-    print i
+    print i['timestamp']
 """
-

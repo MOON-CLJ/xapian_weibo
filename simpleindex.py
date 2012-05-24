@@ -9,6 +9,7 @@ import simplejson as json
 import re
 import pymongo
 import scws
+import opencc
 
 #print 'ictclas import', ictclas.ict_init("./")
 #print 'ictclas import userdict', ictclas.import_dict('userdic.txt')
@@ -19,6 +20,8 @@ s.add_dict('userdic.txt',scws.XDICT_TXT)
 s.set_rules('/usr/local/scws/etc/rules.utf8.ini')
 s.set_ignore(1)
 
+cc = opencc.OpenCC('mix2s')
+
 #connection = pymongo.Connection()
 
 connection = pymongo.Connection('219.224.135.60',27017)
@@ -26,7 +29,6 @@ db = connection.admin
 db.authenticate('root','root')
 db = connection.weibo
 print 'pymongo success'
-
 
 #stopwords
 stopwords = set([line.strip('\r\n') for line in file('ext_stopword.dic')])
@@ -51,6 +53,7 @@ try:
     hashtagsvi = 7
     uidvi = 8
     repnameslistvi = 9
+    widvi = 10
 
     """
     weibos = ''
@@ -82,12 +85,17 @@ try:
         #indexer.index_text(uid,1,'I')
         doc.add_value(uidvi,uid)
 
+        #-->wid
+        wid = weibo['_id']
+        doc.add_value(widvi,wid)
+
         #-->text
         text = weibo['text'].lower()
         try:
             text += ' ' + weibo['repost']['text'].lower()
         except:
             pass
+        text = cc.convert(text)
 #        print 'orginal',text
         #content
         #doc.set_data(weibo['text'])
@@ -111,13 +119,13 @@ try:
         for username in re.findall(u"@([\u2E80-\u9FFFA-Za-z0-9_-]+) ?", text):
             usernames += (username + u" ")
         text = re.sub(u"@([\u2E80-\u9FFFA-Za-z0-9_-]+) ?"," ",text)
-        usernames = usernames.encode('utf-8')
+        #usernames = usernames.encode('utf-8')
  #       print 'usernames',usernames
-        indexer.index_text(usernames,1,'U')
+        #indexer.index_text(usernames,1,'U')
 
         #hashtag
         hashtags_arr = []
-        for hashtag in re.findall(u"#([\u2E80-\u9FFFA-Za-z0-9_-]+)# ?", text):
+        for hashtag in re.findall(r"#(.+?)#", text):
             hashtag = hashtag.encode('utf-8')
             if hashtag not in hashtags_arr:
                 hashtags_arr.append(hashtag)
