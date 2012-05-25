@@ -9,6 +9,7 @@ import simplejson as json
 import re
 import pymongo
 import scws
+import time
 #import opencc
 
 #print 'ictclas import', ictclas.ict_init("./")
@@ -63,14 +64,16 @@ try:
             weibos = json.loads(line)
     """
     count = 0
+    #for weibo in db.statuses.find({'ts': {'$gt': time.time()-10*24*3600}}):
     for weibo in db.statuses.find():
     #for weibo in db.target_statuses.find():
     #for weibo in weibos:
         #init
         count += 1
-        if count % 100000 == 0:
+        if count % 10000 == 0:
             print '<------------------>'
-            print count
+            print count,'at',str(time.strftime("%H:%M:%S", time.gmtime()))
+
         indexer = xapian.TermGenerator()
         stemmer = xapian.Stem("english")
         indexer.set_stemmer(stemmer)

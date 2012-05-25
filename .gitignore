@@ -9,6 +9,7 @@
 /log/*.log
 /tmp
 /simple
+/simplehaha
 .DS_Store
 *~
 ._.DS_Store

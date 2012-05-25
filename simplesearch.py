@@ -94,6 +94,7 @@ class WeiboSearch(object):
                 keywords_arr.append(keywords_hash)
                 #keywords_counter += Counter(json.loads(m.document.get_value(self.keywordsvi)))
 
+            print 'mapreduce begin: ',str(time.strftime("%H:%M:%S", time.gmtime()))
             mapper = SimpleMapReduce(hasharr_to_list, count_words)
             #keywords_arr = [{'haha':1,"haha":2},{'haha':3}]
             word_counts = mapper(keywords_arr)
@@ -101,6 +102,7 @@ class WeiboSearch(object):
             for word,count in word_counts:
                 if count <= 3:
                     lowkeywords_set.add(word)
+            print 'mapreduce end: ',str(time.strftime("%H:%M:%S", time.gmtime()))
 
             keywords_list = []
             for x in keywords_arr:
