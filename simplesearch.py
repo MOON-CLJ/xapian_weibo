@@ -17,7 +17,8 @@ class SimpleMapReduce(object):
         self.map_func = map_func
         self.reduce_func = reduce_func
         num_workers = multiprocessing.cpu_count() * 2
-        self.pool = multiprocessing.Pool(num_workers, maxtasksperchild=10)
+        self.pool = multiprocessing.Pool(num_workers, maxtasksperchild=100000)
+        #self.pool = multiprocessing.Pool(num_workers)
 
     def partition(self, mapped_values):
         partitioned_data = collections.defaultdict(list)
@@ -45,7 +46,7 @@ def count_words(item):
 
 
 class WeiboSearch(object):
-    def __init__(self, dbpath='simple'):
+    def __init__(self, dbpath='simplehaha'):
         database = xapian.Database(dbpath)
         enquire = xapian.Enquire(database)
         qp = xapian.QueryParser()
@@ -81,8 +82,8 @@ class WeiboSearch(object):
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
-            matches = self.enquire.get_mset(0, self.maxitems)
-            #matches = self.enquire.get_mset(0,10)
+            #matches = self.enquire.get_mset(0, self.maxitems)
+            matches = self.enquire.get_mset(0, 100000)
 
             # Display the results.
             print "%i results found." % matches.size()
@@ -193,18 +194,18 @@ class WeiboSearch(object):
 
             return results
 
-"""
+
 #test
 search = WeiboSearch()
 
 timenow = datetime.datetime.now()
-begin = str(time.mktime((timenow + datetime.timedelta(days=-4)).timetuple()))
+begin = str(time.mktime((timenow + datetime.timedelta(days=-4000)).timetuple()))
 end = str(time.mktime(timenow.timetuple()))
 
-emotions,keywords_list = search.query(begin=begin,end=end,qtype='hy',emotiononly=True)
-print 'emotions',emotions
-print 'keywords_list',keywords_list
-"""
+emotions, keywords_list = search.query(begin=begin, end=end, qtype='hy', emotiononly=True)
+#print 'emotions', emotions
+#print 'keywords_list', keywords_list
+
 
 """
 hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
