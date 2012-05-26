@@ -82,8 +82,8 @@ class WeiboSearch(object):
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
-            #matches = self.enquire.get_mset(0, self.maxitems)
-            matches = self.enquire.get_mset(0, 100000)
+            matches = self.enquire.get_mset(0, self.maxitems)
+            #matches = self.enquire.get_mset(0, 100000)
 
             # Display the results.
             print "%i results found." % matches.size()
