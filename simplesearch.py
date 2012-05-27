@@ -11,6 +11,7 @@ import collections
 import itertools
 import multiprocessing
 import gc
+import psutil
 
 
 class SimpleMapReduce(object):
@@ -70,6 +71,49 @@ class WeiboSearch(object):
         #widvi = 10
         self.maxitems = 1000000000
 
+    def lowkeywords_proc(self, matches):
+        gc.disable()
+        lowkeywords_arr = []
+        for m in matches:
+            keywords_hash = json.loads(m.document.get_value(self.keywordsvi))
+            for word, count in keywords_hash.items():
+                if count > 3:
+                    del keywords_hash[word]
+            lowkeywords_arr.append(keywords_hash)
+
+        print 'mapreduce begin memory', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+        print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+        mapper = SimpleMapReduce(hasharr_to_list, count_words)
+        word_counts = mapper(lowkeywords_arr)
+        lowkeywords_set = set()
+        for word, count in word_counts:
+            if count <= 3:
+                lowkeywords_set.add(word)
+        print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+        print 'lowkeywords_set ready to return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+
+        gc.enable()
+        return lowkeywords_set
+
+    def keywords_and_emotions_list_proc(self, matches, lowkeywords_set):
+        gc.disable()
+        emotions_list = []
+        keywords_list = []
+        for m in matches:
+            #emotion
+            emotions_list.append(m.document.get_value(self.emotionvi).split())
+            #keywords
+            keywords_hash = json.loads(m.document.get_value(self.keywordsvi))
+            per_keywords_list = []
+            for word in keywords_hash:
+                if word not in lowkeywords_set:
+                    per_keywords_list.extend([word] * keywords_hash[word])
+            keywords_list.append(per_keywords_list)
+        gc.enable()
+        print 'keywords_and_emotions_list ready to return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+
+        return emotions_list, keywords_list
+
     def query(self, querystring=None, qtype=None, begin=None, end=None, keywords=[], hashtags=[], synonymslist=[], emotiononly=False):
         if qtype == 'hy':
             self.qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(self.timestampvi, ''))
@@ -84,48 +128,17 @@ class WeiboSearch(object):
 
             self.enquire.set_query(query)
             #matches = self.enquire.get_mset(0, self.maxitems)
-            matches = self.enquire.get_mset(0, 120000)
-
+            matches = self.enquire.get_mset(0, 100000)
             # Display the results.
             print "%i results found." % matches.size()
 
-            emotions_list = []
-            #keywords_counter = Counter()
-            keywords_arr = []
-            gc.disable()
-            for m in matches:
-                #emotion
-                emotions_list.append(m.document.get_value(self.emotionvi).split())
-                #keywords
-                keywords_hash = json.loads(m.document.get_value(self.keywordsvi))
-                keywords_arr.append(keywords_hash)
-                #keywords_counter += Counter(json.loads(m.document.get_value(self.keywordsvi)))
+            print 'lowkeywords_set begin', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+            lowkeywords_set = self.lowkeywords_proc(matches)
+            print 'lowkeywords_set return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
 
-            gc.enable()
+            emotions_list, keywords_list = self.keywords_and_emotions_list_proc(matches, lowkeywords_set)
+            print 'keywords_and_emotions_list return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
 
-            gc.disable()
-            print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
-            mapper = SimpleMapReduce(hasharr_to_list, count_words)
-            #keywords_arr = [{'haha':1,"haha":2},{'haha':3}]
-            word_counts = mapper(keywords_arr)
-            lowkeywords_set = set()
-            for word, count in word_counts:
-                if count <= 3:
-                    lowkeywords_set.add(word)
-            print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
-            gc.enable()
-
-            gc.disable()
-            keywords_list = []
-            for x in keywords_arr:
-                per_keywords_list = []
-                for keyword in x:
-                    if keyword not in lowkeywords_set:
-                        per_keywords_list.extend([keyword] * x[keyword])
-                keywords_list.append(per_keywords_list)
-            gc.enable()
-
-            #print keywords_counter
             return emotions_list, keywords_list
 
         if qtype == 'yq':
@@ -211,7 +224,9 @@ begin = str(time.mktime((timenow + datetime.timedelta(days=-4000)).timetuple()))
 end = str(time.mktime(timenow.timetuple()))
 
 emotions, keywords_list = search.query(begin=begin, end=end, qtype='hy', emotiononly=True)
+print psutil.phymem_usage()[1] / (1024 * 1024), 'M'
 print gc.isenabled()
+
 #print 'emotions', emotions
 #print 'keywords_list', keywords_list
 
