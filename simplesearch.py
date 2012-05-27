@@ -10,6 +10,7 @@ import simplejson as json
 import collections
 import itertools
 import multiprocessing
+import gc
 
 
 class SimpleMapReduce(object):
@@ -17,7 +18,7 @@ class SimpleMapReduce(object):
         self.map_func = map_func
         self.reduce_func = reduce_func
         num_workers = multiprocessing.cpu_count() * 2
-        self.pool = multiprocessing.Pool(num_workers, maxtasksperchild=100000)
+        self.pool = multiprocessing.Pool(num_workers, maxtasksperchild=10000)
         #self.pool = multiprocessing.Pool(num_workers)
 
     def partition(self, mapped_values):
@@ -82,8 +83,8 @@ class WeiboSearch(object):
             print "Parsed query is: %s" % [str(query)]
 
             self.enquire.set_query(query)
-            matches = self.enquire.get_mset(0, self.maxitems)
-            #matches = self.enquire.get_mset(0, 100000)
+            #matches = self.enquire.get_mset(0, self.maxitems)
+            matches = self.enquire.get_mset(0, 120000)
 
             # Display the results.
             print "%i results found." % matches.size()
@@ -91,6 +92,7 @@ class WeiboSearch(object):
             emotions_list = []
             #keywords_counter = Counter()
             keywords_arr = []
+            gc.disable()
             for m in matches:
                 #emotion
                 emotions_list.append(m.document.get_value(self.emotionvi).split())
@@ -99,6 +101,9 @@ class WeiboSearch(object):
                 keywords_arr.append(keywords_hash)
                 #keywords_counter += Counter(json.loads(m.document.get_value(self.keywordsvi)))
 
+            gc.enable()
+
+            gc.disable()
             print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
             mapper = SimpleMapReduce(hasharr_to_list, count_words)
             #keywords_arr = [{'haha':1,"haha":2},{'haha':3}]
@@ -108,7 +113,9 @@ class WeiboSearch(object):
                 if count <= 3:
                     lowkeywords_set.add(word)
             print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+            gc.enable()
 
+            gc.disable()
             keywords_list = []
             for x in keywords_arr:
                 per_keywords_list = []
@@ -116,6 +123,7 @@ class WeiboSearch(object):
                     if keyword not in lowkeywords_set:
                         per_keywords_list.extend([keyword] * x[keyword])
                 keywords_list.append(per_keywords_list)
+            gc.enable()
 
             #print keywords_counter
             return emotions_list, keywords_list
@@ -203,6 +211,7 @@ begin = str(time.mktime((timenow + datetime.timedelta(days=-4000)).timetuple()))
 end = str(time.mktime(timenow.timetuple()))
 
 emotions, keywords_list = search.query(begin=begin, end=end, qtype='hy', emotiononly=True)
+print gc.isenabled()
 #print 'emotions', emotions
 #print 'keywords_list', keywords_list
 
