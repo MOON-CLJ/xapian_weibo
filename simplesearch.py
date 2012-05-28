@@ -12,6 +12,17 @@ import itertools
 import multiprocessing
 import gc
 import psutil
+import redis
+
+
+"""
+mapper = SimpleMapReduce(hasharr_to_list, count_words)
+        word_counts = mapper(lowkeywords_arr)
+        lowkeywords_set = set()
+        for word, count in word_counts:
+            if count <= 3:
+                lowkeywords_set.add(word)
+"""
 
 
 class SimpleMapReduce(object):
@@ -71,31 +82,59 @@ class WeiboSearch(object):
         #widvi = 10
         self.maxitems = 1000000000
 
+        pool = redis.ConnectionPool(host='localhost', port=6379, db=1)
+        self.r = redis.Redis(connection_pool=pool)
+        self.r.flushdb()
+        self.lowkeywords_set_rds = 'lowkeywords'
+
+        pool1 = redis.ConnectionPool(host='localhost', port=6379, db=2)
+        self.r1 = redis.Redis(connection_pool=pool1)
+        self.r1.flushdb()
+        self.keywords_hash_rds = 'keywords_hash'
+
     def lowkeywords_proc(self, matches):
         gc.disable()
-        lowkeywords_arr = []
-        for m in matches:
-            keywords_hash = json.loads(m.document.get_value(self.keywordsvi))
-            for word, count in keywords_hash.items():
-                if count > 3:
-                    del keywords_hash[word]
-            lowkeywords_arr.append(keywords_hash)
 
-        print 'mapreduce begin memory', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
-        print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
-        mapper = SimpleMapReduce(hasharr_to_list, count_words)
-        word_counts = mapper(lowkeywords_arr)
-        lowkeywords_set = set()
-        for word, count in word_counts:
-            if count <= 3:
-                lowkeywords_set.add(word)
-        print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
-        print 'lowkeywords_set ready to return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+        with self.r1.pipeline() as pipe:
+            pipe_prep_count = 0
+            pipe_size = 10000
+            pipe.multi()
+            for m in matches:
+                for word, count in json.loads(m.document.get_value(self.keywordsvi)).items():
+                    pipe.hincrby(self.keywords_hash_rds, word, count)
+                pipe_prep_count += 1
+                if pipe_prep_count % pipe_size == 0:
+                    print '<----------------', pipe_prep_count
+                    print 'keywords_hash mapreduce begin', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+                    print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+                    pipe.execute()
+                    pipe.reset()
+                    print 'keywords_hash mapreduce end', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+                    print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+
+        with self.r1.pipeline() as pipe:
+            pipe_prep_count = 0
+            pipe_size = 10000
+            pipe.multi()
+            for word, count in self.r1.hgetall(self.keywords_hash_rds).items():
+                pipe_prep_count += 1
+                if count <= 3:
+                    self.r.sadd(self.lowkeywords_set_rds, word)
+                else:
+                    pipe.hdel(self.keywords_hash_rds, word)
+                if pipe_prep_count % pipe_size == 0:
+                    print '<----------------', pipe_prep_count
+                    pipe.execute()
+                    pipe.reset()
+                    print 'keywords_hash clean', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
 
         gc.enable()
-        return lowkeywords_set
+        self.r1.flushdb()
+        print 'keywords_hash clean', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
 
-    def keywords_and_emotions_list_proc(self, matches, lowkeywords_set):
+        return True
+
+    def keywords_and_emotions_list_proc(self, matches):
         gc.disable()
         emotions_list = []
         keywords_list = []
@@ -106,11 +145,12 @@ class WeiboSearch(object):
             keywords_hash = json.loads(m.document.get_value(self.keywordsvi))
             per_keywords_list = []
             for word in keywords_hash:
-                if word not in lowkeywords_set:
+                if self.r.sismember(self.lowkeywords_set_rds, word):
                     per_keywords_list.extend([word] * keywords_hash[word])
             keywords_list.append(per_keywords_list)
         gc.enable()
-        print 'keywords_and_emotions_list ready to return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+        self.r.flushdb()
+        print 'lowkeywords_set clean', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
 
         return emotions_list, keywords_list
 
@@ -128,16 +168,13 @@ class WeiboSearch(object):
 
             self.enquire.set_query(query)
             #matches = self.enquire.get_mset(0, self.maxitems)
-            matches = self.enquire.get_mset(0, 100000)
+            matches = self.enquire.get_mset(0, 10000)
             # Display the results.
             print "%i results found." % matches.size()
 
-            print 'lowkeywords_set begin', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
-            lowkeywords_set = self.lowkeywords_proc(matches)
-            print 'lowkeywords_set return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
-
-            emotions_list, keywords_list = self.keywords_and_emotions_list_proc(matches, lowkeywords_set)
-            print 'keywords_and_emotions_list return', psutil.phymem_usage()[1] / (1024 * 1024), 'M'
+            if not self.lowkeywords_proc(matches):
+                return
+            emotions_list, keywords_list = self.keywords_and_emotions_list_proc(matches)
 
             return emotions_list, keywords_list
 
@@ -215,7 +252,7 @@ class WeiboSearch(object):
 
             return results
 
-
+"""
 #test
 search = WeiboSearch()
 
@@ -229,7 +266,7 @@ print gc.isenabled()
 
 #print 'emotions', emotions
 #print 'keywords_list', keywords_list
-
+"""
 
 """
 hashtags,keywords_hash = search.query(begin='0',end='131113198690',qtype='yq')
