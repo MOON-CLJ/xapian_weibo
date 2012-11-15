@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#  !此文件不再使用，重构中
+
 #import sys
 import xapian
 import time

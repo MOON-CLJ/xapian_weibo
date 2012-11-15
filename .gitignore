@@ -2,6 +2,7 @@
 /tmp
 /simple
 /simplehaha
+/test/_hehe*
 .ropeproject
 .DS_Store
 *~
@@ -10,7 +11,6 @@
 # Ignore bin
 bin
 
-# Ignore all swapfiles.
 *.swp
 *.js
 *.pyc

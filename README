@@ -1,1 +1,8 @@
 xapian good thing
+
+配置分词
+
+http://www.ftphp.com/scws/docs.php#instscws
+
+git clone git@github.com:MOON-CLJ/pyscws.git 并安装
+

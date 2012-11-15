@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#  !此文件不再使用，重构中
+
 import sys
 import xapian
 import string
 import simplejson as json
-#import ictclas
 import re
 import pymongo
 import scws
 import time
-#import opencc
 
-#print 'ictclas import', ictclas.ict_init("./")
-#print 'ictclas import userdict', ictclas.import_dict('userdic.txt')
 s = scws.Scws()
 s.set_charset('utf-8')
 s.set_dict('/usr/local/scws/etc/dict.utf8.xdb',scws.XDICT_MEM)
@@ -22,7 +20,6 @@ s.add_dict('userdic.txt',scws.XDICT_TXT)
 s.set_rules('/usr/local/scws/etc/rules.utf8.ini')
 s.set_ignore(1)
 
-#cc = opencc.OpenCC('mix2s')
 
 #connection = pymongo.Connection()
 
@@ -218,6 +215,3 @@ try:
 except Exception, e:
     print >> sys.stderr, "Exception: %s" % str(e)
     sys.exit(1)
-
-#print 'ictclas exit',ictclas.ict_exit()
-
