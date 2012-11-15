@@ -1,8 +1,11 @@
 xapian good thing
 
 配置分词
+1,http://www.ftphp.com/scws/docs.php#instscws
+2,git clone git@github.com:MOON-CLJ/pyscws.git 并安装
 
+项目参考：
+https://github.com/notanumber/xapian-haystack/blob/master/xapian_backend.py
+http://xapian.org/docs/admin_notes.html
 http://www.ftphp.com/scws/docs.php#instscws
-
-git clone git@github.com:MOON-CLJ/pyscws.git 并安装
-
+http://www.162cm.com/p/xapian-learning.html
