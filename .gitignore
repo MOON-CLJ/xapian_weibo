@@ -1,6 +1,7 @@
 /log/*.log
 /tmp
 /simple
+/data
 /simplehaha
 /test/_hehe*
 .ropeproject

@@ -257,7 +257,8 @@ if __name__ == "__main__":
 
     start_time = args.start_time[0] if args.start_time else None
     if debug:
-        print 'debug mode(warning): start_time will not be used'
+        if start_time:
+            print 'debug mode(warning): start_time will not be used'
         PROCESS_IDX_SIZE = 10000
 
     xapian_backend = XapianBackend(dbpath, SCHEMA_VERSION)
