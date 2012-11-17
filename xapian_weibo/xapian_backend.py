@@ -19,7 +19,7 @@ CUSTOM_DICT_PATH = '../dict/userdic.txt'
 IGNORE_PUNCTUATION = 1
 EXTRA_STOPWORD_PATH = '../dict/stopword.dic'
 EXTRA_EMOTIONWORD_PATH = '../dict/emotionlist.txt'
-PROCESS_IDX_SIZE = 1000000
+PROCESS_IDX_SIZE = 100000
 
 SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
@@ -89,7 +89,6 @@ class XapianBackend(object):
 
     #@profile
     def load_and_index_weibos(self):
-        count = 0
         if debug:
             with open("../test/sample_tweets.js") as f:
                 weibos = json.loads(f.readline())
@@ -97,26 +96,31 @@ class XapianBackend(object):
         else:
             weibos = self.db.statuses.find()
 
-        for weibo in weibos:
-            count += 1
-            posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
-            for i in xrange(len(self.folders_with_date) - 1):
-                if self.folders_with_date[i][0] <= posted_at < self.folders_with_date[i + 1][0]:
-                    folder = self.folders_with_date[i][1]
-                    break
-            else:
-                if posted_at >= self.folders_with_date[i + 1][0]:
-                    folder = self.folders_with_date[i + 1][1]
+        count = 0
+        try:
+            for weibo in weibos:
+                count += 1
+                posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
+                for i in xrange(len(self.folders_with_date) - 1):
+                    if self.folders_with_date[i][0] <= posted_at < self.folders_with_date[i + 1][0]:
+                        folder = self.folders_with_date[i][1]
+                        break
+                else:
+                    if posted_at >= self.folders_with_date[i + 1][0]:
+                        folder = self.folders_with_date[i + 1][1]
 
-            self.update(folder, weibo)
-            if count % PROCESS_IDX_SIZE == 0:
-                print '[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), count)
+                self.update(folder, weibo)
+                if count % PROCESS_IDX_SIZE == 0:
+                    print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+        except Exception:
+            raise
 
-        for database in self.databases.itervalues():
-            database.close()
+        finally:
+            for database in self.databases.itervalues():
+                database.close()
 
         if debug:
-            for _, folder in self.folders_with_date:
+            for folder in self.folders_with_date.itervalues():
                 print 'index size', folder, self.document_count(folder)
 
     def update(self, folder, weibo):
@@ -137,7 +141,6 @@ class XapianBackend(object):
             if field['field_name'] in ['uid', 'name']:
                 term = _marshal_term(weibo[field['field_name']])
                 document.add_term(prefix + term)
-                document.add_value(field['column'], weibo[field['field_name']])
             elif field['field_name'] == 'ts':
                 document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
             elif field['field_name'] == 'text':
