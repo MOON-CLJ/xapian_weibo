@@ -8,6 +8,7 @@ import simplejson as json
 import pymongo
 import scws
 import datetime
+from argparse import ArgumentParser
 
 
 SCWS_ENCODING = 'utf-8'
@@ -18,7 +19,7 @@ CUSTOM_DICT_PATH = '../dict/userdic.txt'
 IGNORE_PUNCTUATION = 1
 EXTRA_STOPWORD_PATH = '../dict/stopword.dic'
 EXTRA_EMOTIONWORD_PATH = '../dict/emotionlist.txt'
-PROCESS_IDX_SIZE = 1000
+PROCESS_IDX_SIZE = 1000000
 
 SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
@@ -108,8 +109,8 @@ class XapianBackend(object):
                     folder = self.folders_with_date[i + 1][1]
 
             self.update(folder, weibo)
-            if debug and (count % PROCESS_IDX_SIZE == 0):
-                print count
+            if count % PROCESS_IDX_SIZE == 0:
+                print '[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), count)
 
         for database in self.databases.itervalues():
             database.close()
@@ -213,17 +214,18 @@ def _marshal_term(term):
 
 if __name__ == "__main__":
     """
-    debug True run 'py (-m memory_profiler) ../xapian_weibo/xapian_backend.py hehe'
+    cd to test/ folder
+    then run 'py (-m memory_profiler) ../xapian_weibo/xapian_backend.py -d hehe'
     http://pypi.python.org/pypi/memory_profiler
     """
-    debug = True
-    if len(sys.argv) == 1 or len(sys.argv) > 3:
-        print >> sys.stderr, "Usage: py (-m memory_profiler) PATH_TO_{xapian_backend.py} PATH_TO_DATABASE"
-        sys.exit(1)
-    elif len(sys.argv) == 2:
-        dbpath = sys.argv[1]
-    elif len(sys.argv) == 3:
-        dbpath = sys.argv[2]
+    parser = ArgumentParser()
+    parser.add_argument('-d', '--debug', action='store_true', help='DEBUG')
+    parser.add_argument('dbpath', help='PATH_TO_DATABASE')
+    args = parser.parse_args(sys.argv[1:])
+    debug = args.debug
+    dbpath = args.dbpath
+    if debug:
+        PROCESS_IDX_SIZE = 10000
 
     xapian_backend = XapianBackend(dbpath, SCHEMA_VERSION)
     xapian_backend.load_and_index_weibos()
