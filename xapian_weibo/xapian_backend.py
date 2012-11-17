@@ -8,6 +8,7 @@ import simplejson as json
 import pymongo
 import scws
 import datetime
+import calendar
 from argparse import ArgumentParser
 
 
@@ -33,7 +34,6 @@ class XapianBackend(object):
             self.schema = Schema.v1
 
         self.databases = {}
-        self.generate()
         self.load_scws()
         self.load_mongod()
         self.load_extra_dic()
@@ -44,14 +44,20 @@ class XapianBackend(object):
         except InvalidIndexError:
             return 0
 
-    def generate(self):
+    def generate(self, start_time=None):
         folders_with_date = []
-        start_time = datetime.datetime(2009, 8, 1)
-        step_time = datetime.timedelta(days=50)
-        while start_time < datetime.datetime.today():
-            folder = "_%s_%s" % (self.path, start_time.strftime("%Y-%m-%d"))
+
+        if not debug and start_time:
+            start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d')
+            folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
             folders_with_date.append((start_time, folder))
-            start_time += step_time
+        elif debug:
+            start_time = datetime.datetime(2009, 8, 1)
+            step_time = datetime.timedelta(days=50)
+            while start_time < datetime.datetime.today():
+                folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
+                folders_with_date.append((start_time, folder))
+                start_time += step_time
 
         self.folders_with_date = folders_with_date
 
@@ -88,26 +94,37 @@ class XapianBackend(object):
         return self.databases[folder]
 
     #@profile
-    def load_and_index_weibos(self):
-        if debug:
+    def load_and_index_weibos(self, start_time=None):
+        if not debug and start_time:
+            start_time = self.folders_with_date[0][0]
+            end_time = start_time + datetime.timedelta(days=50)
+            weibos = self.db.statuses.find({
+                self.schema['posted_at_key']: {
+                    '$gte': calendar.timegm(start_time.timetuple()),
+                    '$lt': calendar.timegm(end_time.timetuple())
+                }
+            })
+            print 'prod mode: loaded weibos from mongod'
+        elif debug:
             with open("../test/sample_tweets.js") as f:
                 weibos = json.loads(f.readline())
-            print 'loaded weibos from file'
-        else:
-            weibos = self.db.statuses.find()
+            print 'debug mode: loaded weibos from file'
 
         count = 0
         try:
             for weibo in weibos:
                 count += 1
                 posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
-                for i in xrange(len(self.folders_with_date) - 1):
-                    if self.folders_with_date[i][0] <= posted_at < self.folders_with_date[i + 1][0]:
-                        folder = self.folders_with_date[i][1]
-                        break
-                else:
-                    if posted_at >= self.folders_with_date[i + 1][0]:
-                        folder = self.folders_with_date[i + 1][1]
+                if not debug and start_time:
+                    folder = self.folders_with_date[0][1]
+                elif debug:
+                    for i in xrange(len(self.folders_with_date) - 1):
+                        if self.folders_with_date[i][0] <= posted_at < self.folders_with_date[i + 1][0]:
+                            folder = self.folders_with_date[i][1]
+                            break
+                    else:
+                        if posted_at >= self.folders_with_date[i + 1][0]:
+                            folder = self.folders_with_date[i + 1][1]
 
                 self.update(folder, weibo)
                 if count % PROCESS_IDX_SIZE == 0:
@@ -119,8 +136,7 @@ class XapianBackend(object):
             for database in self.databases.itervalues():
                 database.close()
 
-        if debug:
-            for folder in self.folders_with_date.itervalues():
+            for _, folder in self.folders_with_date:
                 print 'index size', folder, self.document_count(folder)
 
     def update(self, folder, weibo):
@@ -223,12 +239,27 @@ if __name__ == "__main__":
     """
     parser = ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', help='DEBUG')
+    parser.add_argument('-p', '--print_folders', action='store_true', help='PRINT FOLDER THEN EXIT')
+    parser.add_argument('-s', '--start_time', nargs=1, help='DATETIME')
     parser.add_argument('dbpath', help='PATH_TO_DATABASE')
     args = parser.parse_args(sys.argv[1:])
     debug = args.debug
     dbpath = args.dbpath
+
+    if args.print_folders:
+        debug = True
+        xapian_backend = XapianBackend(dbpath, SCHEMA_VERSION)
+        xapian_backend.generate()
+        for _, folder in xapian_backend.folders_with_date:
+            print folder
+
+        sys.exit(0)
+
+    start_time = args.start_time[0] if args.start_time else None
     if debug:
+        print 'debug mode(warning): start_time will not be used'
         PROCESS_IDX_SIZE = 10000
 
     xapian_backend = XapianBackend(dbpath, SCHEMA_VERSION)
-    xapian_backend.load_and_index_weibos()
+    xapian_backend.generate(start_time)
+    xapian_backend.load_and_index_weibos(start_time)
