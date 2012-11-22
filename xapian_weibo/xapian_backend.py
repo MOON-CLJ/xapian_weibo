@@ -103,7 +103,7 @@ class XapianBackend(object):
                     '$gte': calendar.timegm(start_time.timetuple()),
                     '$lt': calendar.timegm(end_time.timetuple())
                 }
-            })
+            }, timeout=False)
             print 'prod mode: loaded weibos from mongod'
         elif debug:
             with open("../test/sample_tweets.js") as f:
@@ -164,7 +164,8 @@ class XapianBackend(object):
                           in self.s.participle(weibo[field['field_name']].encode('utf-8'))
                           if len(token[0]) > 1]
                 for token in tokens:
-                    document.add_term(prefix + token)
+                    if len(token) <= 10:
+                        document.add_term(prefix + token)
 
                 document.add_value(field['column'], weibo[field['field_name']])
 

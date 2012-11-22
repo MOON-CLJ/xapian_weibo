@@ -2,7 +2,7 @@
 import time
 import scws
 
-text = '[懒得理你dx抛媚眼]'  # * 55000
+text = '加加加加加加加加'  # * 55000
 
 s = scws.Scws()
 s.set_charset('utf-8')
