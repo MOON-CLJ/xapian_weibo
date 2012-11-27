@@ -31,8 +31,7 @@ DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version):
         self.path = dbpath
-        if schema_version == 1:
-            self.schema = Schema.v1
+        self.schema = getattr(Schema, 'v%s' % schema_version, None)
 
         self.databases = {}
         self.load_scws()
@@ -173,7 +172,7 @@ class XapianIndex(object):
 
 class XapianSearch(object):
     def __init__(self, path='../data/', name='statuses', schema_version=SCHEMA_VERSION):
-        def creat(dbpath):
+        def create(dbpath):
             return xapian.Database(dbpath)
 
         def merge(db1, db2):
@@ -181,11 +180,11 @@ class XapianSearch(object):
             return db1
 
         self.database = reduce(merge,
-                               map(creat, 
-                                   [path+p for p in os.listdir(path) if p.startswith('_%s' % name)]))
+                               map(create,
+                                   [path + p for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(Schema, 'v%s' % schema_version, None)
-    
+
     def parse_query(self, query_dict):
         """
         Given a `query_dict`, will attempt to return a xapian.Query
@@ -195,7 +194,7 @@ class XapianSearch(object):
 
         Returns a xapian.Query
         """
-        if query_dict == None:
+        if query_dict is None:
             return xapian.Query('')  # Match everything
         elif query_dict == {}:
             return xapian.Query()  # Match nothing
@@ -248,7 +247,7 @@ class XapianSearch(object):
                end_offset=1000, fields=None, **kwargs):
 
         query = self.parse_query(query)
-        
+
         if xapian.Query.empty(query):
             return {
                 'results': [],
