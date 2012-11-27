@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import xapian
 import cPickle as pickle
@@ -27,7 +28,7 @@ DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
 
-class XapianBackend(object):
+class XapianIndex(object):
     def __init__(self, dbpath, schema_version):
         self.path = dbpath
         if schema_version == 1:
@@ -169,26 +170,190 @@ class XapianBackend(object):
 
                 document.add_value(field['column'], weibo[field['field_name']])
 
-    def search(self):
-        pass
 
+class XapianSearch(object):
+    def __init__(self, path='../data/', name='statuses', schema_version=SCHEMA_VERSION):
+        def creat(dbpath):
+            return xapian.Database(dbpath)
 
-class InvalidIndexError(Exception):
-    """Raised when an index can not be opened."""
-    pass
+        def merge(db1, db2):
+            db1.add_database(db2)
+            return db1
 
+        self.database = reduce(merge,
+                               map(creat, 
+                                   [path+p for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
-class Schema:
-    v1 = {
-        'obj_id': '_id',
-        'posted_at_key': 'ts',
-        'idx_fields': [
-            {'field_name': 'uid', 'column': 0},
-            {'field_name': 'name', 'column': 1},
-            {'field_name': 'text', 'column': 2},
-            {'field_name': 'ts', 'column': 3}
-        ],
-    }
+        self.schema = getattr(Schema, 'v%s' % schema_version, None)
+    
+    def parse_query(self, query_dict):
+        """
+        Given a `query_dict`, will attempt to return a xapian.Query
+
+        Required arguments:
+            ``query_dict`` -- A MongoDB style query dict to parse
+
+        Returns a xapian.Query
+        """
+        if query_dict == None:
+            return xapian.Query('')  # Match everything
+        elif query_dict == {}:
+            return xapian.Query()  # Match nothing
+
+        qp = xapian.QueryParser()
+        qp.set_database(self.database)
+
+        query = xapian.Query('')
+        field_prefix = {}
+        field_type = {}
+        field_col = {}
+        for field_dict in self.schema['idx_fields']:
+            fname = field_dict['field_name']
+            field_col[fname] = field_dict['column']
+            field_type[fname] = field_dict['type']
+            field_prefix[fname] = DOCUMENT_CUSTOM_TERM_PREFIX + fname.upper()
+        for field in query_dict:
+            if field in field_prefix:
+                prefix = field_prefix[field]
+                col = field_col[field]
+                value = query_dict[field]
+                if isinstance(value, dict):
+                    ftype = field_type[field]
+                    if ftype == 'int' or ftype == 'long':
+                        begin = None
+                        end = None
+                        if "$gt" in value:
+                            begin = value['$gt']
+                        if "$lt" in value:
+                            end = value['$lt']
+                        if not begin:
+                            begin = 0
+                        if not end:
+                            end = sys.maxint
+                        qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(col, '%s' % prefix))
+                        new_query = qp.parse_query('%s%s..%s' % (prefix, begin, end))
+                    else:
+                        pass
+                elif not hasattr(value, "strip") and hasattr(value, "__getitem__") or hasattr(value, "__iter__"):
+                    value = ['%s%s' % (prefix, v) for v in value]
+                    new_query = xapian.Query(xapian.Query.OP_AND, value)
+                else:
+                    new_query = xapian.Query('%s%s' % (prefix, value))
+                query = xapian.Query(xapian.Query.OP_AND, [query, new_query])
+            else:
+                continue
+        return query
+
+    def search(self, query=None, sort_by=None, start_offset=0,
+               end_offset=1000, fields=None, **kwargs):
+
+        query = self.parse_query(query)
+        
+        if xapian.Query.empty(query):
+            return {
+                'results': [],
+                'hits': 0,
+            }
+
+        database = self.database
+        enquire = xapian.Enquire(database)
+        enquire.set_query(query)
+
+        if sort_by:
+            sorter = xapian.MultiValueSorter()
+
+            for sort_field in sort_by:
+                if sort_field.startswith('-'):
+                    reverse = True
+                    sort_field = sort_field[1:]  # Strip the '-'
+                else:
+                    reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
+                sorter.add(self._value_column(sort_field), reverse)
+
+            enquire.set_sort_by_key_then_relevance(sorter, True)
+
+        results = []
+
+        if not end_offset:
+            end_offset = database.get_doccount() - start_offset
+
+        matches = self._get_enquire_mset(database, enquire, start_offset, end_offset)
+
+        for match in matches:
+            weibo = pickle.loads(self._get_document_data(database, match.document))
+            item = {}
+            for field in fields:
+                item[field] = weibo[field]
+            results.append(item)
+
+        return {
+            'results': results,
+            'hits': self._get_hit_count(database, enquire)
+        }
+
+    def _get_enquire_mset(self, database, enquire, start_offset, end_offset):
+        """
+        A safer version of Xapian.enquire.get_mset
+
+        Simply wraps the Xapian version and catches any `Xapian.DatabaseModifiedError`,
+        attempting a `database.reopen` as needed.
+
+        Required arguments:
+            `database` -- The database to be read
+            `enquire` -- An instance of an Xapian.enquire object
+            `start_offset` -- The start offset to pass to `enquire.get_mset`
+            `end_offset` -- The end offset to pass to `enquire.get_mset`
+        """
+        try:
+            return enquire.get_mset(start_offset, end_offset)
+        except xapian.DatabaseModifiedError:
+            database.reopen()
+            return enquire.get_mset(start_offset, end_offset)
+
+    def _get_document_data(self, database, document):
+        """
+        A safer version of Xapian.document.get_data
+
+        Simply wraps the Xapian version and catches any `Xapian.DatabaseModifiedError`,
+        attempting a `database.reopen` as needed.
+
+        Required arguments:
+            `database` -- The database to be read
+            `document` -- An instance of an Xapian.document object
+        """
+        try:
+            return document.get_data()
+        except xapian.DatabaseModifiedError:
+            database.reopen()
+            return document.get_data()
+
+    def _value_column(self, field):
+        """
+        Private method that returns the column value slot in the database
+        for a given field.
+
+        Required arguemnts:
+            `field` -- The field to lookup
+
+        Returns an integer with the column location (0 indexed).
+        """
+        for field_dict in self.schema['idx_fields']:
+            if field_dict['field_name'] == field:
+                return field_dict['column']
+        return 0
+
+    def _get_hit_count(self, database, enquire):
+        """
+        Given a database and enquire instance, returns the estimated number
+        of matches.
+
+        Required arguments:
+            `database` -- The database to be queried
+            `enquire` -- The enquire instance
+        """
+        return self._get_enquire_mset(
+            database, enquire, 0, database.get_doccount()
+        ).size()
 
 
 def _database(folder, writable=False):
@@ -232,6 +397,24 @@ def _marshal_term(term):
     return term
 
 
+class InvalidIndexError(Exception):
+    """Raised when an index can not be opened."""
+    pass
+
+
+class Schema:
+    v1 = {
+        'obj_id': '_id',
+        'posted_at_key': 'ts',
+        'idx_fields': [
+            {'field_name': 'uid', 'column': 0, 'type': 'long'},
+            {'field_name': 'name', 'column': 1, 'type': 'text'},
+            {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'ts', 'column': 3, 'type': 'long'}
+        ],
+    }
+
+
 if __name__ == "__main__":
     """
     cd to test/ folder
@@ -249,9 +432,9 @@ if __name__ == "__main__":
 
     if args.print_folders:
         debug = True
-        xapian_backend = XapianBackend(dbpath, SCHEMA_VERSION)
-        xapian_backend.generate()
-        for _, folder in xapian_backend.folders_with_date:
+        xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
+        xapian_indexer.generate()
+        for _, folder in xapian_indexer.folders_with_date:
             print folder
 
         sys.exit(0)
@@ -262,6 +445,6 @@ if __name__ == "__main__":
             print 'debug mode(warning): start_time will not be used'
         PROCESS_IDX_SIZE = 10000
 
-    xapian_backend = XapianBackend(dbpath, SCHEMA_VERSION)
-    xapian_backend.generate(start_time)
-    xapian_backend.load_and_index_weibos(start_time)
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
+    xapian_indexer.generate(start_time)
+    xapian_indexer.load_and_index_weibos(start_time)
