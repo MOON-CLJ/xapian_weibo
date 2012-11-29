@@ -211,36 +211,28 @@ class XapianSearch(object):
             field_col[fname] = field_dict['column']
             field_type[fname] = field_dict['type']
             field_prefix[fname] = DOCUMENT_CUSTOM_TERM_PREFIX + fname.upper()
+
         for field in query_dict:
             if field in field_prefix:
                 prefix = field_prefix[field]
                 col = field_col[field]
                 value = query_dict[field]
+
                 if isinstance(value, dict):
                     ftype = field_type[field]
                     if ftype == 'int' or ftype == 'long':
-                        begin = None
-                        end = None
-                        if "$gt" in value:
-                            begin = value['$gt']
-                        if "$lt" in value:
-                            end = value['$lt']
-                        if not begin:
-                            begin = 0
-                        if not end:
-                            end = sys.maxint
+                        begin = value.get('$gt', 0)
+                        end = value.get('$lt', sys.maxint)
                         qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(col, '%s' % prefix))
                         new_query = qp.parse_query('%s%s..%s' % (prefix, begin, end))
-                    else:
-                        pass
-                elif not hasattr(value, "strip") and hasattr(value, "__getitem__") or hasattr(value, "__iter__"):
+                elif not hasattr(value, 'strip') and hasattr(value, '__getitem__') or hasattr(value, '__iter__'):
                     value = ['%s%s' % (prefix, v) for v in value]
                     new_query = xapian.Query(xapian.Query.OP_AND, value)
                 else:
                     new_query = xapian.Query('%s%s' % (prefix, value))
+
                 query = xapian.Query(xapian.Query.OP_AND, [query, new_query])
-            else:
-                continue
+
         return query
 
     def search(self, query=None, sort_by=None, start_offset=0,
@@ -355,6 +347,24 @@ class XapianSearch(object):
         ).size()
 
 
+def _marshal_value(value):
+    """
+    Private utility method that converts Python values to a string for Xapian values.
+    """
+    if isinstance(value, (int, long)):
+        value = xapian.sortable_serialise(value)
+    return value
+
+
+def _marshal_term(term):
+    """
+    Private utility method that converts Python terms to a string for Xapian terms.
+    """
+    if isinstance(term, int):
+        term = str(term)
+    return term
+
+
 def _database(folder, writable=False):
     """
     Private method that returns a xapian.Database for use.
@@ -376,24 +386,6 @@ def _database(folder, writable=False):
             raise InvalidIndexError(u'Unable to open index at %s' % folder)
 
     return database
-
-
-def _marshal_value(value):
-    """
-    Private utility method that converts Python values to a string for Xapian values.
-    """
-    if isinstance(value, (int, long)):
-        value = xapian.sortable_serialise(value)
-    return value
-
-
-def _marshal_term(term):
-    """
-    Private utility method that converts Python terms to a string for Xapian terms.
-    """
-    if isinstance(term, int):
-        term = str(term)
-    return term
 
 
 class InvalidIndexError(Exception):
