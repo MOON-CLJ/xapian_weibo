@@ -272,9 +272,13 @@ class XapianSearch(object):
 
         for match in matches:
             weibo = pickle.loads(self._get_document_data(database, match.document))
-            item = {}
-            for field in fields:
-                item[field] = weibo[field]
+            item = None
+            if fields:
+                item = {}
+                for field in fields:
+                    item[field] = weibo[field]
+            else:
+                item = weibo
             results.append(item)
 
         return {
