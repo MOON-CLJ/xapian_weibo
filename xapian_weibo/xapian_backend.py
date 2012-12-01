@@ -273,7 +273,7 @@ class XapianSearch(object):
         for match in matches:
             weibo = pickle.loads(self._get_document_data(database, match.document))
             item = None
-            if fields:
+            if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
                 item = {}
                 for field in fields:
                     item[field] = weibo[field]
