@@ -12,6 +12,6 @@
 # Ignore bin
 bin
 
-*.swp
+*.sw[pon]
 *.js
 *.pyc

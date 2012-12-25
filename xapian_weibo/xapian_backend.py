@@ -201,16 +201,16 @@ class XapianSearch(object):
             equal, key = value, { key:value }
 
             $lt, $gt, the field less or more than the specified value, { field: { $lt: value, $gt: value } }
-            
+
             Logical:
-            $and, perform logical AND operation in expressions,  { $and: { <expression1> , <expression2> , 
+            $and, perform logical AND operation in expressions,  { $and: { <expression1> , <expression2> ,
                                                                             ... , <expressionN> } }
 
             $or, perform logical OR operation in expressions like the $and operation
 
             $xor, perform logical XOR operation in expressions like the $and operation
 
-            $not, perform logical NOT operation in experssions, which get the conjunction of both negative 
+            $not, perform logical NOT operation in experssions, which get the conjunction of both negative
                   experssions, { $not: { <expression1> }, { <expression2> }, ...  { <expressionN> } }
 
             PS: if not any operation is specified, the logical AND operation is the default operation.
@@ -226,6 +226,7 @@ class XapianSearch(object):
         return query_tree.to_query(self.schema, self.database)
 
     def build_query_tree(self, query_dict):
+        """将字典转成语法树"""
         ops = ['$not']
         bi_ops = ['$or', '$and', '$xor']
 
@@ -236,15 +237,13 @@ class XapianSearch(object):
                 return a | b
             elif operation == '$xor':
                 return a ^ b
-            else:
-                return None
 
         def grammar_tree(query_dict):
             total_query = Q()
             for k in query_dict.keys():
                 if k in bi_ops:
                     bi_query = reduce(lambda a, b: op(a, b, k),
-                                      map(lambda a: Q(**{a[0]: a[1]}), 
+                                      map(lambda a: Q(**{a[0]: a[1]}),
                                           filter(lambda a: a[0] not in ops + bi_ops, query_dict[k].iteritems())), Q())
                     total_query &= bi_query
 
@@ -255,20 +254,21 @@ class XapianSearch(object):
                 elif k in ops:
                     if k == '$not':
                         not_dict = {}
-                        nested_query_dict = {}
+                        #nested_query_dict = {}
                         for not_k in query_dict[k]:
                             if not_k not in ops + bi_ops:
                                 not_dict[not_k] = query_dict[k][not_k]
                             else:
+                                pass
                                 #nested query in a $not statement is not implemented
-                                nested_query_dict.update({not_k: query_dict[k][not_k]})
+                                #nested_query_dict.update({not_k: query_dict[k][not_k]})
                         not_query = notQ(**not_dict)
                         total_query &= not_query
 
                 else:
                     total_query &= Q(**{k: query_dict[k]})
             return total_query
-                        
+
         total_query = grammar_tree(query_dict)
 
         return total_query
@@ -477,8 +477,12 @@ class SimplificationVisitor(QNodeVisitor):
 
     def visit_combination(self, combination):
         if combination.operation == combination.AND:
-            # The simplification only applies to 'simple' queries
-            if all(isinstance(node, Q) and not isinstance(node, notQ) 
+            """
+            The simplification only applies to 'simple' queries
+            如果最外层的操作符是and，然后里面的每个元素都是一个独自的Q且不是not Q
+            将所有的Q的query抽出来，到一个query里面来
+            """
+            if all(isinstance(node, Q) and not isinstance(node, notQ)
                    for node in combination.children):
                 queries = [node.query for node in combination.children]
                 return Q(**self._query_conjunction(queries))
@@ -494,7 +498,7 @@ class SimplificationVisitor(QNodeVisitor):
             ops = set(query.keys())
             # Make sure that the same operation isn't applied more than once
             # to a single field
-            intersection = ops.intersection(query_ops)
+            intersection = ops & query_ops
             if intersection:
                 msg = 'Duplicate query conditions: '
                 raise InvalidQueryError(msg + ', '.join(intersection))
@@ -546,7 +550,7 @@ class QueryTreeTransformerVisitor(QNodeVisitor):
             children = []
             for node in combination.children:
                 if (isinstance(node, QCombination) and
-                    node.operation == combination.OR):
+                        node.operation == combination.OR):
                     children += node.children
                 else:
                     children.append(node)
@@ -577,7 +581,7 @@ class QueryCompilerVisitor(QNodeVisitor):
     def visit_not_query(self, query):
         new_query = self.visit_query(query, n=True)
         #NOT set is the intersection of universal set AND NOT set
-        new_query =  xapian.Query(xapian.Query.OP_AND_NOT, [xapian.Query(''), new_query])
+        new_query = xapian.Query(xapian.Query.OP_AND_NOT, [xapian.Query(''), new_query])
         return new_query
 
     def visit_query(self, query, n=False):
@@ -613,8 +617,11 @@ class QueryCompilerVisitor(QNodeVisitor):
                         new_query = qp.parse_query('%s%s..%s' % (prefix, begin, end))
                 elif not hasattr(value, 'strip') and hasattr(value, '__getitem__') or hasattr(value, '__iter__'):
                     value = ['%s%s' % (prefix, v) for v in value]
-                    #De Morgan's laws, if we want the intersection of negation sets, 
+                    #De Morgan's laws, if we want the intersection of negation sets,
                     #Firstly, we obtain the disjunction of this sets, then get negation of them
+                    # (AND_NOT [U, (OR, [a, b, c])])
+                    # NOT (a OR B OR C)
+                    # NOT a AND not b AND not C
                     if not n:
                         new_query = xapian.Query(xapian.Query.OP_AND, value)
                     else:
@@ -625,6 +632,8 @@ class QueryCompilerVisitor(QNodeVisitor):
                     if not n:
                         new_query = xapian.Query(xapian.Query.OP_AND, [pre_query, new_query])
                     else:
+                        # and_not , [U, a or b])
+                        # not a and not b
                         new_query = xapian.Query(xapian.Query.OP_OR, [pre_query, new_query])
                 pre_query = new_query
 
@@ -644,45 +653,46 @@ class QNode(object):
 
     def to_query(self, schema, database):
         query = self.accept(SimplificationVisitor())
-        query = query.accept(QueryTreeTransformerVisitor())
+        #query = query.accept(QueryTreeTransformerVisitor())  # 暂时注释掉，不确定其存在的价值
         query = query.accept(QueryCompilerVisitor(schema, database))
         return query
 
     def accept(self, visitor):
+        """在to_query里被调用，不同子类有不同实现"""
         raise NotImplementedError
 
     def _combine(self, other, operation):
         """
         Combine this node with another node into a QCombination object.
         """
-        if getattr(other, 'empty', True):
+        if getattr(other, 'empty'):
             return self
-        
+
         if self.empty:
             return other
-                                    
+
         return QCombination(operation, [self, other])
-    
+
     @property
     def empty(self):
         return False
-    
+
     def __or__(self, other):
         return self._combine(other, self.OR)
-    
+
     def __and__(self, other):
         return self._combine(other, self.AND)
-    
+
     def __xor__(self, other):
         return self._combine(other, self.XOR)
-               
+
 
 class QCombination(QNode):
     """
     Represents the combination of several conditions by a given logical
     operator.
     """
-        
+
     def __init__(self, operation, children):
         self.operation = operation
         self.children = []
@@ -693,7 +703,7 @@ class QCombination(QNode):
                 self.children += node.children
             else:
                 self.children.append(node)
-                    
+
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -702,7 +712,7 @@ class QCombination(QNode):
 
     @property
     def empty(self):
-        return not bool(self.children)
+        return not self.children
 
 
 class Q(QNode):
@@ -719,12 +729,12 @@ class Q(QNode):
 
     @property
     def empty(self):
-        return not bool(self.query)
+        return not self.query
 
 
 class notQ(Q):
     """
-    A query object based on simple query object, used in a query tree to 
+    A query object based on simple query object, used in a query tree to
     build up NOT query structures.
     """
     def __init__(self, **query):
