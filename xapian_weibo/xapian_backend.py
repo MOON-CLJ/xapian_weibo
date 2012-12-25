@@ -29,6 +29,14 @@ SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
+OPERATIONINT2STR = {
+    '0': 'AND',
+    '1': 'AND_NOT',
+    '2': 'OR',
+    '3': 'XOR',
+    '4': 'NOT',
+}
+
 
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version):
@@ -714,6 +722,10 @@ class QCombination(QNode):
     def empty(self):
         return not self.children
 
+    def __repr__(self):
+        return '%s: (%s, [%s])' % \
+            (type(self), OPERATIONINT2STR[str(self.operation)], ', '.join([str(x) for x in self.children]))
+
 
 class Q(QNode):
     """
@@ -730,6 +742,9 @@ class Q(QNode):
     @property
     def empty(self):
         return not self.query
+
+    def __repr__(self):
+        return '%s: %s' % (type(self), self.query)
 
 
 class notQ(Q):
