@@ -282,7 +282,7 @@ class XapianSearch(object):
         return total_query
 
     def search(self, query=None, sort_by=None, start_offset=0,
-               end_offset=1000, fields=None, **kwargs):
+               max_offset=1000, fields=None, **kwargs):
 
         query = self.parse_query(query)
 
@@ -311,10 +311,10 @@ class XapianSearch(object):
 
         results = []
 
-        if not end_offset:
-            end_offset = database.get_doccount() - start_offset
+        if not max_offset:
+            max_offset = database.get_doccount() - start_offset
 
-        matches = self._get_enquire_mset(database, enquire, start_offset, end_offset)
+        matches = self._get_enquire_mset(database, enquire, start_offset, max_offset)
 
         for match in matches:
             weibo = pickle.loads(self._get_document_data(database, match.document))
@@ -332,7 +332,7 @@ class XapianSearch(object):
             'hits': self._get_hit_count(database, enquire)
         }
 
-    def _get_enquire_mset(self, database, enquire, start_offset, end_offset):
+    def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
         A safer version of Xapian.enquire.get_mset
 
@@ -343,13 +343,13 @@ class XapianSearch(object):
             `database` -- The database to be read
             `enquire` -- An instance of an Xapian.enquire object
             `start_offset` -- The start offset to pass to `enquire.get_mset`
-            `end_offset` -- The end offset to pass to `enquire.get_mset`
+            `max_offset` -- The max offset (maxitems to acquire) to pass to `enquire.get_mset`
         """
         try:
-            return enquire.get_mset(start_offset, end_offset)
+            return enquire.get_mset(start_offset, max_offset)
         except xapian.DatabaseModifiedError:
             database.reopen()
-            return enquire.get_mset(start_offset, end_offset)
+            return enquire.get_mset(start_offset, max_offset)
 
     def _get_document_data(self, database, document):
         """
