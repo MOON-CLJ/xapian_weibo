@@ -54,5 +54,7 @@ query_dict = {
         },
     }
 }
-results = s.search(query=query_dict)
+results = s.search(query=query_dict, fields=['uid', 'text', 'ts', 'name', 'emotions'])
+for r in results['results']:
+    print r['emotions']
 print results['hits']
