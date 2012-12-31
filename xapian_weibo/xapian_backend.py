@@ -211,8 +211,8 @@ class XapianSearch(object):
             $lt, $gt, the field less or more than the specified value, { field: { $lt: value, $gt: value } }
 
             Logical:
-            $and, perform logical AND operation in expressions,  { $and: { <expression1> , <expression2> ,
-                                                                            ... , <expressionN> } }
+            $and, perform logical AND operation in expressions,  { $and: [{ <expression1> } , { <expression2> },
+                                                                            ... , { <expressionN> }] }
 
             $or, perform logical OR operation in expressions like the $and operation
 
@@ -221,7 +221,8 @@ class XapianSearch(object):
             $not, perform logical NOT operation in experssions, which get the conjunction of both negative
                   experssions, { $not: { <expression1> }, { <expression2> }, ...  { <expressionN> } }
 
-            PS: if not any operation is specified, the logical AND operation is the default operation.
+            PS: if not any operation is specified, the logical AND operation is the default operation
+            (An implicit AND operation is performed when specifying a comma separated list of expressions).
                 See more query examples in test files.
         """
         if query_dict is None:
@@ -245,6 +246,8 @@ class XapianSearch(object):
                 return a | b
             elif operation == '$xor':
                 return a ^ b
+            else:
+                raise OperationError('Operation %s cannot be processed.' % operation)
 
         def grammar_tree(query_dict):
             total_query = Q()
