@@ -250,14 +250,18 @@ class XapianSearch(object):
             total_query = Q()
             for k in query_dict.keys():
                 if k in bi_ops:
+                    #deal with expression without operator 
                     bi_query = reduce(lambda a, b: op(a, b, k),
-                                      map(lambda a: Q(**{a[0]: a[1]}),
-                                          filter(lambda a: a[0] not in ops + bi_ops, query_dict[k].iteritems())), Q())
-                    total_query &= bi_query
-
-                    nested_query_dict = dict(filter(lambda a: a[0] in ops + bi_ops, query_dict[k].iteritems()))
-                    if nested_query_dict:
-                        total_query = op(total_query, grammar_tree(nested_query_dict), k)
+                                      map(lambda expr: Q(**expr),
+                                          filter(lambda expr: not (set(expr.keys()) & set(ops + bi_ops)), query_dict[k])), Q())
+                    #deal with nested expression
+                    nested_query = reduce(lambda a, b: op(a, b, k),
+                                          map(lambda query_dict: grammar_tree(query_dict),
+                                              filter(lambda expr: set(expr.keys()) & set(ops + bi_ops), query_dict[k])), Q())
+                    if nested_query:
+                        total_query &= op(bi_query, nested_query, k)
+                    else:
+                        total_query &= bi_query
 
                 elif k in ops:
                     if k == '$not':
