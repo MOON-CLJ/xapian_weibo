@@ -660,9 +660,13 @@ class QNode(object):
     NOT = 4
 
     def to_query(self, schema, database):
-        query = self.accept(SimplificationVisitor())
-        #query = query.accept(QueryTreeTransformerVisitor())  # 暂时注释掉，不确定其存在的价值
-        query = query.accept(QueryCompilerVisitor(schema, database))
+        '''
+        The query optimization is a bit harder, so we just leave the optimization of query 
+        to user's own judgement and come back to it in the future.
+        '''
+        #query = self.accept(SimplificationVisitor())
+        #query = query.accept(QueryTreeTransformerVisitor())
+        query = self.accept(QueryCompilerVisitor(schema, database))
         return query
 
     def accept(self, visitor):
