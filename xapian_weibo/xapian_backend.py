@@ -253,13 +253,13 @@ class XapianSearch(object):
             total_query = Q()
             for k in query_dict.keys():
                 if k in bi_ops:
-                    #deal with expression without operator 
+                    #deal with expression without operator
                     bi_query = reduce(lambda a, b: op(a, b, k),
                                       map(lambda expr: Q(**expr),
                                           filter(lambda expr: not (set(expr.keys()) & set(ops + bi_ops)), query_dict[k])), Q())
                     #deal with nested expression
                     nested_query = reduce(lambda a, b: op(a, b, k),
-                                          map(lambda query_dict: grammar_tree(query_dict),
+                                          map(lambda nested_query_dict: grammar_tree(nested_query_dict),
                                               filter(lambda expr: set(expr.keys()) & set(ops + bi_ops), query_dict[k])), Q())
                     if nested_query:
                         total_query &= op(bi_query, nested_query, k)
@@ -668,7 +668,7 @@ class QNode(object):
 
     def to_query(self, schema, database):
         '''
-        The query optimization is a bit harder, so we just leave the optimization of query 
+        The query optimization is a bit harder, so we just leave the optimization of query
         to user's own judgement and come back to it in the future.
         '''
         #query = self.accept(SimplificationVisitor())
