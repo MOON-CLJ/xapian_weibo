@@ -211,8 +211,8 @@ class XapianSearch(object):
             $lt, $gt, the field less or more than the specified value, { field: { $lt: value, $gt: value } }
 
             Logical:
-            $and, perform logical AND operation in expressions,  { $and: { <expression1> , <expression2> ,
-                                                                            ... , <expressionN> } }
+            $and, perform logical AND operation in expressions,  { $and: [{ <expression1> } , { <expression2> },
+                                                                            ... , { <expressionN> }] }
 
             $or, perform logical OR operation in expressions like the $and operation
 
@@ -221,7 +221,8 @@ class XapianSearch(object):
             $not, perform logical NOT operation in experssions, which get the conjunction of both negative
                   experssions, { $not: { <expression1> }, { <expression2> }, ...  { <expressionN> } }
 
-            PS: if not any operation is specified, the logical AND operation is the default operation.
+            PS: if not any operation is specified, the logical AND operation is the default operation
+            (An implicit AND operation is performed when specifying a comma separated list of expressions).
                 See more query examples in test files.
         """
         if query_dict is None:
@@ -245,19 +246,25 @@ class XapianSearch(object):
                 return a | b
             elif operation == '$xor':
                 return a ^ b
+            else:
+                raise OperationError('Operation %s cannot be processed.' % operation)
 
         def grammar_tree(query_dict):
             total_query = Q()
             for k in query_dict.keys():
                 if k in bi_ops:
+                    #deal with expression without operator 
                     bi_query = reduce(lambda a, b: op(a, b, k),
-                                      map(lambda a: Q(**{a[0]: a[1]}),
-                                          filter(lambda a: a[0] not in ops + bi_ops, query_dict[k].iteritems())), Q())
-                    total_query &= bi_query
-
-                    nested_query_dict = dict(filter(lambda a: a[0] in ops + bi_ops, query_dict[k].iteritems()))
-                    if nested_query_dict:
-                        total_query = op(total_query, grammar_tree(nested_query_dict), k)
+                                      map(lambda expr: Q(**expr),
+                                          filter(lambda expr: not (set(expr.keys()) & set(ops + bi_ops)), query_dict[k])), Q())
+                    #deal with nested expression
+                    nested_query = reduce(lambda a, b: op(a, b, k),
+                                          map(lambda query_dict: grammar_tree(query_dict),
+                                              filter(lambda expr: set(expr.keys()) & set(ops + bi_ops), query_dict[k])), Q())
+                    if nested_query:
+                        total_query &= op(bi_query, nested_query, k)
+                    else:
+                        total_query &= bi_query
 
                 elif k in ops:
                     if k == '$not':
@@ -660,9 +667,13 @@ class QNode(object):
     NOT = 4
 
     def to_query(self, schema, database):
-        query = self.accept(SimplificationVisitor())
-        #query = query.accept(QueryTreeTransformerVisitor())  # 暂时注释掉，不确定其存在的价值
-        query = query.accept(QueryCompilerVisitor(schema, database))
+        '''
+        The query optimization is a bit harder, so we just leave the optimization of query 
+        to user's own judgement and come back to it in the future.
+        '''
+        #query = self.accept(SimplificationVisitor())
+        #query = query.accept(QueryTreeTransformerVisitor())
+        query = self.accept(QueryCompilerVisitor(schema, database))
         return query
 
     def accept(self, visitor):
