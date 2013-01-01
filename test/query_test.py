@@ -4,8 +4,7 @@ import sys
 import  calendar
 import datetime
 
-sys.path.append('../xapian_weibo')
-from xapian_backend import XapianSearch
+from xapian_weibo.xapian_backend import XapianSearch
 
 s = XapianSearch(path='../data/', name='statuses')
 
