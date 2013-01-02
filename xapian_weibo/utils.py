@@ -9,9 +9,16 @@ CHS_DICT_PATH = '/usr/local/scws/etc/dict.utf8.xdb'
 CHT_DICT_PATH = '/usr/local/scws/etc/dict_cht.utf8.xdb'
 IGNORE_PUNCTUATION = 1
 # dev
+"""
 CUSTOM_DICT_PATH = '/Users/clj/dev/xapian_weibo/dict/userdic.txt'
 EXTRA_STOPWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/stopword.dic'
 EXTRA_EMOTIONWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/emotionlist.txt'
+"""
+
+# prod
+CUSTOM_DICT_PATH = '/opt/xapian_weibo/dict/userdic.txt'
+EXTRA_STOPWORD_PATH = '/opt/xapian_weibo/dict/stopword.dic'
+EXTRA_EMOTIONWORD_PATH = '/opt/xapian_weibo/dict/emotionlist.txt'
 
 
 def load_scws():
