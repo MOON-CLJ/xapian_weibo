@@ -7,10 +7,11 @@ SCWS_ENCODING = 'utf-8'
 SCWS_RULES = '/usr/local/scws/etc/rules.utf8.ini'
 CHS_DICT_PATH = '/usr/local/scws/etc/dict.utf8.xdb'
 CHT_DICT_PATH = '/usr/local/scws/etc/dict_cht.utf8.xdb'
-CUSTOM_DICT_PATH = '../dict/userdic.txt'
 IGNORE_PUNCTUATION = 1
-EXTRA_STOPWORD_PATH = '../dict/stopword.dic'
-EXTRA_EMOTIONWORD_PATH = '../dict/emotionlist.txt'
+# dev
+CUSTOM_DICT_PATH = '/Users/clj/dev/xapian_weibo/dict/userdic.txt'
+EXTRA_STOPWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/stopword.dic'
+EXTRA_EMOTIONWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/emotionlist.txt'
 
 
 def load_scws():
