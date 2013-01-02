@@ -2,12 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import scws
+import time
+import itertools
+import collections
+import multiprocessing
+import operator
+
 
 SCWS_ENCODING = 'utf-8'
 SCWS_RULES = '/usr/local/scws/etc/rules.utf8.ini'
 CHS_DICT_PATH = '/usr/local/scws/etc/dict.utf8.xdb'
 CHT_DICT_PATH = '/usr/local/scws/etc/dict_cht.utf8.xdb'
 IGNORE_PUNCTUATION = 1
+
 # dev
 """
 CUSTOM_DICT_PATH = '/Users/clj/dev/xapian_weibo/dict/userdic.txt'
@@ -19,6 +26,74 @@ EXTRA_EMOTIONWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/emotionlist.txt'
 CUSTOM_DICT_PATH = '/opt/xapian_weibo/dict/userdic.txt'
 EXTRA_STOPWORD_PATH = '/opt/xapian_weibo/dict/stopword.dic'
 EXTRA_EMOTIONWORD_PATH = '/opt/xapian_weibo/dict/emotionlist.txt'
+
+
+class SimpleMapReduce(object):
+    def __init__(self, map_func, reduce_func, num_workers=None):
+        self.map_func = map_func
+        self.reduce_func = reduce_func
+        num_workers = multiprocessing.cpu_count() * 2
+        self.pool = multiprocessing.Pool(num_workers, maxtasksperchild=10000)
+
+    def partition(self, mapped_values):
+        """
+        >>> s = [('yellow', 1), ('blue', 2), ('yellow', 3), ('blue', 4), ('red', 1)]
+        >>> d = defaultdict(list)
+        >>> for k, v in s:
+        ...     d[k].append(v)
+        ...
+        >>> d.items()
+        [('blue', [2, 4]), ('red', [1]), ('yellow', [1, 3])]
+        """
+
+        partitioned_data = collections.defaultdict(list)
+        for key, value in mapped_values:
+            partitioned_data[key].append(value)
+        return partitioned_data.items()
+
+    def __call__(self, inputs, chunksize=1):
+        map_responses = self.pool.map(self.map_func, inputs, chunksize=chunksize)
+        partitioned_data = self.partition(itertools.chain(*map_responses))
+        reduced_values = self.pool.map(self.reduce_func, partitioned_data)
+        return reduced_values
+
+
+def top_keywords(s, query, emotions_only=True, top=1000):
+    _scws = load_scws()
+    emotion_words = set(load_extra_dic())
+
+    results = s.search(query=query, max_offset=100000000, fields=['text'])
+    print results['hits']
+    origin_data = []
+    for r in results['results']:
+        text = r['text'].encode('utf-8')
+        words = [token[0] for token in _scws.participle(text) if len(token[0].decode('utf-8')) > 1]
+        if emotions_only:
+            if set(words) & emotion_words:
+                origin_data.append(words)
+        else:
+            origin_data.append(words)
+
+    print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+    mapper = SimpleMapReduce(addcount2keywords, count_words)
+    keywordswithcount = mapper(origin_data)
+    print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
+
+    keywordswithcount.sort(key=operator.itemgetter(1))
+    keywordswithcount.reverse()
+    return keywordswithcount[:top]
+
+
+def addcount2keywords(keywords):
+    keywordswithcount = []
+    for keyword in keywords:
+        keywordswithcount.append((keyword, 1))
+    return keywordswithcount
+
+
+def count_words(item):
+    word, occurances = item
+    return (word, sum(occurances))
 
 
 def load_scws():

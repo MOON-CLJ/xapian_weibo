@@ -4,7 +4,9 @@ import sys
 import  calendar
 import datetime
 
-from xapian_weibo.xapian_backend import XapianSearch
+sys.path.append('../xapian_weibo')
+from xapian_backend import XapianSearch
+from utils import top_keywords
 
 s = XapianSearch(path='../data/', name='statuses')
 
@@ -40,6 +42,27 @@ for r in results['results']:
 print 'hits: %s' % results['hits']
 print s.parse_query(query_dict)
 """
+"""
+begin_ts1 = calendar.timegm(datetime.datetime(2011, 10, 1).timetuple())
+end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
+begin_ts2 = calendar.timegm(datetime.datetime(2010, 10, 1).timetuple())
+end_ts2 = calendar.timegm(datetime.datetime(2010, 12, 31).timetuple())
+
+query_dict = {'$or':
+              [{'ts': {
+                '$gt': begin_ts1,
+                '$lt': end_ts1,
+                }},
+               {'ts': {
+                '$gt': begin_ts2,
+                '$lt': end_ts2,
+                }}]}
+
+results = s.search(query=query_dict, fields=['uid', 'text', 'ts', 'name', 'emotions'])
+for r in results['results']:
+    print r['emotions']
+print results['hits']
+"""
 
 begin_ts1 = calendar.timegm(datetime.datetime(2011, 10, 1).timetuple())
 end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
@@ -55,7 +78,7 @@ query_dict = {'$or':
                 '$gt': begin_ts2,
                 '$lt': end_ts2,
                 }}]}
-results = s.search(query=query_dict, fields=['uid', 'text', 'ts', 'name', 'emotions'])
-for r in results['results']:
-    print r['emotions']
-print results['hits']
+
+
+for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
+    print word, count
