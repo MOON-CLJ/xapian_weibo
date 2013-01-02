@@ -3,25 +3,17 @@
 
 from argparse import ArgumentParser
 from query_base import Q, notQ
+from utils.base import load_scws, load_extra_dic
 import os
 import sys
 import xapian
 import cPickle as pickle
 import simplejson as json
 import pymongo
-import scws
 import datetime
 import calendar
 
 
-SCWS_ENCODING = 'utf-8'
-SCWS_RULES = '/usr/local/scws/etc/rules.utf8.ini'
-CHS_DICT_PATH = '/usr/local/scws/etc/dict.utf8.xdb'
-CHT_DICT_PATH = '/usr/local/scws/etc/dict_cht.utf8.xdb'
-CUSTOM_DICT_PATH = '../dict/userdic.txt'
-IGNORE_PUNCTUATION = 1
-EXTRA_STOPWORD_PATH = '../dict/stopword.dic'
-EXTRA_EMOTIONWORD_PATH = '../dict/emotionlist.txt'
 PROCESS_IDX_SIZE = 100000
 
 SCHEMA_VERSION = 1
@@ -35,9 +27,9 @@ class XapianIndex(object):
         self.schema = getattr(Schema, 'v%s' % schema_version, None)
 
         self.databases = {}
-        self.load_scws()
+        self.s = load_scws()
+        self.emotion_words = load_extra_dic()
         self.load_mongod()
-        self.load_extra_dic()
 
     def document_count(self, folder):
         try:
@@ -61,26 +53,6 @@ class XapianIndex(object):
                 start_time += step_time
 
         self.folders_with_date = folders_with_date
-
-    def load_extra_dic(self):
-        self.emotion_words = [line.strip('\r\n') for line in file(EXTRA_EMOTIONWORD_PATH)]
-
-    def load_scws(self):
-        s = scws.Scws()
-        s.set_charset(SCWS_ENCODING)
-
-        s.set_dict(CHS_DICT_PATH, scws.XDICT_MEM)
-        s.add_dict(CHT_DICT_PATH, scws.XDICT_MEM)
-        s.add_dict(CUSTOM_DICT_PATH, scws.XDICT_TXT)
-
-        # 把停用词全部拆成单字，再过滤掉单字，以达到去除停用词的目的
-        s.add_dict(EXTRA_STOPWORD_PATH, scws.XDICT_TXT)
-        # 即基于表情表对表情进行分词，必要的时候在返回结果处或后剔除
-        s.add_dict(EXTRA_EMOTIONWORD_PATH, scws.XDICT_TXT)
-
-        s.set_rules(SCWS_RULES)
-        s.set_ignore(IGNORE_PUNCTUATION)
-        self.s = s
 
     def load_mongod(self):
         connection = pymongo.Connection()
@@ -461,7 +433,7 @@ class Schema:
 
 if __name__ == "__main__":
     """
-    cd to test/ folder
+    cd data/
     then run 'py (-m memory_profiler) ../xapian_weibo/xapian_backend.py -d hehe'
     http://pypi.python.org/pypi/memory_profiler
     """
