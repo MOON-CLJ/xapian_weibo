@@ -3,7 +3,7 @@
 
 from argparse import ArgumentParser
 from query_base import Q, notQ
-from utils.base import load_scws, load_extra_dic
+from utils import load_scws, load_extra_dic
 import os
 import sys
 import xapian
