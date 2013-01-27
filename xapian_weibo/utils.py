@@ -7,6 +7,7 @@ import itertools
 import collections
 import multiprocessing
 import operator
+import re
 
 
 SCWS_ENCODING = 'utf-8'
@@ -67,9 +68,9 @@ def top_keywords(s, query, emotions_only=True, top=1000):
     origin_data = []
     for r in results['results']:
         text = r['text'].encode('utf-8')
-        words = [token[0] for token in _scws.participle(text) if len(token[0].decode('utf-8')) > 1]
+        words = [token[0] for token in _scws.participle(text)]
         if emotions_only:
-            if set(words) & emotion_words:
+            if (set(words) & emotion_words) and re.search('\[.+\]', text):
                 origin_data.append(words)
         else:
             origin_data.append(words)
