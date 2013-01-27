@@ -68,7 +68,7 @@ def top_keywords(s, query, emotions_only=True, top=1000):
     origin_data = []
     for r in results['results']:
         text = r['text'].encode('utf-8')
-        words = [token[0] for token in _scws.participle(text)]
+        words = [token[0] for token in _scws.participle(text) if token[0].isalnum() or len(token[0]) > 3]
         if emotions_only:
             if (set(words) & emotion_words) and re.search('\[.+\]', text):
                 origin_data.append(words)
