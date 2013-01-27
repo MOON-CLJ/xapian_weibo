@@ -64,6 +64,7 @@ for r in results['results']:
 print results['hits']
 """
 
+"""
 begin_ts1 = calendar.timegm(datetime.datetime(2011, 10, 1).timetuple())
 end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
 begin_ts2 = calendar.timegm(datetime.datetime(2010, 10, 1).timetuple())
@@ -79,6 +80,20 @@ query_dict = {'$or':
                 '$lt': end_ts2,
                 }}]}
 
+
+for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
+    print word, count
+"""
+
+begin_ts1 = calendar.timegm(datetime.datetime(2011, 1, 1).timetuple())
+end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
+query_dict = {
+    'ts': {
+        '$gt': begin_ts1,
+        '$lt': end_ts1,
+    },
+    'text': u'抓狂',
+}
 
 for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
     print word, count

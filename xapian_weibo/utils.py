@@ -62,7 +62,7 @@ def top_keywords(s, query, emotions_only=True, top=1000):
     _scws = load_scws()
     emotion_words = set(load_extra_dic())
 
-    results = s.search(query=query, max_offset=100000000, fields=['text'])
+    results = s.search(query=query, max_offset=1000000000, fields=['text'])
     print results['hits']
     origin_data = []
     for r in results['results']:
