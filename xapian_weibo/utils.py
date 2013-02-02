@@ -70,7 +70,13 @@ def top_keywords(s, query, emotions_only=True, top=1000):
         text = r['text'].encode('utf-8')
         words = [token[0] for token in _scws.participle(text) if token[0].isalnum() or len(token[0]) > 3]
         if emotions_only:
-            if (set(words) & emotion_words) and re.search('\[.+\]', text):
+            if isinstance(query['text'], basestring):
+                query_emotion = query['text'].encode('utf-8')
+            elif hasattr(query['text'], '__getitem__'):
+                query_emotion = query['text'][0].encode('utf-8')
+            query_emotion = '[%s]' % query_emotion
+
+            if (set(words) & emotion_words) and query_emotion in text:
                 origin_data.append(words)
         else:
             origin_data.append(words)
