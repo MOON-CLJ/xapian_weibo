@@ -7,7 +7,6 @@ import itertools
 import collections
 import multiprocessing
 import operator
-import re
 
 
 SCWS_ENCODING = 'utf-8'
@@ -60,6 +59,20 @@ class SimpleMapReduce(object):
 
 
 def top_keywords(s, query, emotions_only=True, top=1000):
+    keywordswithcount = keywords(s, query, emotions_only)
+    keywordswithcount.sort(key=operator.itemgetter(1))
+    keywordswithcount.reverse()
+
+    return keywordswithcount[:top]
+
+
+def not_low_freq_keywords(s, query, emotions_only=True, larger_than=3):
+    keywordswithcount = keywords(s, query, emotions_only)
+    keywordswithcount = [x for x in keywordswithcount if x[1] > larger_than]
+    return keywordswithcount
+
+
+def keywords(s, query, emotions_only):
     _scws = load_scws()
     emotion_words = set(load_extra_dic())
 
@@ -86,9 +99,7 @@ def top_keywords(s, query, emotions_only=True, top=1000):
     keywordswithcount = mapper(origin_data)
     print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
 
-    keywordswithcount.sort(key=operator.itemgetter(1))
-    keywordswithcount.reverse()
-    return keywordswithcount[:top]
+    return keywordswithcount
 
 
 def addcount2keywords(keywords):

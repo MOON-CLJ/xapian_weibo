@@ -6,7 +6,7 @@ import datetime
 
 sys.path.append('../xapian_weibo')
 from xapian_backend import XapianSearch
-from utils import top_keywords
+from utils import top_keywords, not_low_freq_keywords
 
 s = XapianSearch(path='../data/', name='statuses')
 
@@ -95,5 +95,10 @@ query_dict = {
     'text': u'抓狂',
 }
 
+"""
 for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
+    print word, count
+"""
+
+for word, count in not_low_freq_keywords(s, query_dict, emotions_only=True):
     print word, count
