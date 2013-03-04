@@ -4,12 +4,12 @@
 from argparse import ArgumentParser
 from query_base import Q, notQ
 from utils import load_scws, load_extra_dic
+from utils4scrapy.tk_maintain import _default_mongo
 import os
 import sys
 import xapian
 import cPickle as pickle
 import simplejson as json
-import pymongo
 import datetime
 import calendar
 
@@ -19,6 +19,8 @@ PROCESS_IDX_SIZE = 100000
 SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
+MONGOD_HOST = 'localhost'
+MONGOD_PORT = 27017
 
 
 class XapianIndex(object):
@@ -29,7 +31,7 @@ class XapianIndex(object):
         self.databases = {}
         self.s = load_scws()
         self.emotion_words = load_extra_dic()
-        self.load_mongod()
+        self.db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb='weibo')
 
     def document_count(self, folder):
         try:
@@ -53,13 +55,6 @@ class XapianIndex(object):
                 start_time += step_time
 
         self.folders_with_date = folders_with_date
-
-    def load_mongod(self):
-        connection = pymongo.Connection()
-        db = connection.admin
-        db.authenticate('root', 'root')
-        db = connection.weibo
-        self.db = db
 
     def get_database(self, folder):
         if folder not in self.databases:
