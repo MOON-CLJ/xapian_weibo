@@ -287,7 +287,7 @@ class XapianSearch(object):
             if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
                 item = {}
                 for field in fields:
-                    item[field] = weibo[field]
+                    item[field] = weibo.get(field, None)
             else:
                 item = weibo
             results.append(item)
