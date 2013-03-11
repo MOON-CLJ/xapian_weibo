@@ -82,7 +82,7 @@ def keywords(s, query, emotions_only):
     for r in results['results']:
         text = r['text'].encode('utf-8')
         words = [token[0] for token in _scws.participle(text) if token[0].isalnum() or len(token[0]) > 3]
-        if emotions_only:
+        if emotions_only and 'text' in query and query['text']:
             if isinstance(query['text'], basestring):
                 query_emotion = query['text'].encode('utf-8')
             elif hasattr(query['text'], '__getitem__'):
