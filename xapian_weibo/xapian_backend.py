@@ -16,7 +16,7 @@ import time
 
 
 PROCESS_IDX_SIZE = 100000
-
+FLUSH_INDEX_SIZE = 200000
 SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
@@ -40,6 +40,8 @@ class XapianIndex(object):
         self.schema = getattr(Schema, 'v%s' % schema_version, None)
 
         self.databases = {}
+        self.db_index_count = {}
+        self.date_and_dbfolders = []
         self.s = load_scws()
 
         # todo db and collection in schema
@@ -52,21 +54,19 @@ class XapianIndex(object):
             return 0
 
     def generate(self, start_time=None):
-        folders_with_date = []
-
         if not debug and start_time:
             start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d')
             folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
-            folders_with_date.append((start_time, folder))
+            self.date_and_dbfolders.append((start_time, folder))
+            self.db_index_count[folder] = 0
         elif debug:
             start_time = datetime.datetime(2009, 8, 1)
             step_time = datetime.timedelta(days=50)
             while start_time < datetime.datetime.today():
                 folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
-                folders_with_date.append((start_time, folder))
+                self.date_and_dbfolders.append((start_time, folder))
+                self.db_index_count[folder] = 0
                 start_time += step_time
-
-        self.folders_with_date = folders_with_date
 
     def get_database(self, folder):
         if folder not in self.databases:
@@ -77,7 +77,7 @@ class XapianIndex(object):
 
     def load_weibos(self, start_time=None):
         if not debug and start_time:
-            start_time = self.folders_with_date[0][0]
+            start_time = self.date_and_dbfolders[0][0]
             end_time = start_time + datetime.timedelta(days=50)
             weibos = self.db.statuses.find({
                 self.schema['posted_at_key']: {
@@ -100,16 +100,16 @@ class XapianIndex(object):
             for weibo in self.weibos:
                 count += 1
                 if not debug and start_time:
-                    folder = self.folders_with_date[0][1]
+                    folder = self.date_and_dbfolders[0][1]
                 elif debug:
                     posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
-                    for i in xrange(len(self.folders_with_date) - 1):
-                        if self.folders_with_date[i][0] <= posted_at < self.folders_with_date[i + 1][0]:
-                            folder = self.folders_with_date[i][1]
+                    for i in xrange(len(self.date_and_dbfolders) - 1):
+                        if self.date_and_dbfolders[i][0] <= posted_at < self.date_and_dbfolders[i + 1][0]:
+                            folder = self.date_and_dbfolders[i][1]
                             break
                     else:
-                        if posted_at >= self.folders_with_date[i + 1][0]:
-                            folder = self.folders_with_date[i + 1][1]
+                        if posted_at >= self.date_and_dbfolders[i + 1][0]:
+                            folder = self.date_and_dbfolders[i + 1][1]
 
                 self.update(folder, weibo)
                 if count % PROCESS_IDX_SIZE == 0:
@@ -121,8 +121,8 @@ class XapianIndex(object):
             for database in self.databases.itervalues():
                 database.close()
 
-            for _, folder in self.folders_with_date:
-                print 'index size', folder, self.document_count(folder)
+            for _, folder in self.date_and_dbfolders:
+                print '[', folder, ']', 'total size', self.document_count(folder), 'index size', self.db_index_count[folder]
 
     def update(self, folder, weibo):
         document = xapian.Document()
@@ -135,6 +135,9 @@ class XapianIndex(object):
         ))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
+        self.db_index_count[folder] += 1
+        if self.db_index_count[folder] % FLUSH_INDEX_SIZE == 0:
+            self.get_database(folder).flush()
 
     def index_field(self, field, document, weibo, schema_version):
         prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
@@ -462,7 +465,7 @@ if __name__ == "__main__":
         debug = True
         xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
         xapian_indexer.generate()
-        for _, folder in xapian_indexer.folders_with_date:
+        for _, folder in xapian_indexer.date_and_dbfolders:
             print folder
 
         sys.exit(0)
