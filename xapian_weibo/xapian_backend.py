@@ -15,7 +15,7 @@ import calendar
 import time
 
 
-PROCESS_IDX_SIZE = 100000
+PROCESS_IDX_SIZE = 20000
 FLUSH_INDEX_SIZE = 200000
 SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
@@ -130,9 +130,7 @@ class XapianIndex(object):
         for field in self.schema['idx_fields']:
             self.index_field(field, document, weibo, SCHEMA_VERSION)
 
-        document.set_data(pickle.dumps(
-            weibo, pickle.HIGHEST_PROTOCOL
-        ))
+        document.set_data(pickle.dumps(weibo))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
         self.db_index_count[folder] += 1
