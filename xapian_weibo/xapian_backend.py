@@ -3,7 +3,7 @@
 
 from argparse import ArgumentParser
 from query_base import Q, notQ
-from utils import load_scws, load_extra_dic
+from utils import load_scws
 from utils4scrapy.tk_maintain import _default_mongo
 import os
 import sys
@@ -12,6 +12,7 @@ import cPickle as pickle
 import simplejson as json
 import datetime
 import calendar
+import time
 
 
 PROCESS_IDX_SIZE = 100000
@@ -23,6 +24,16 @@ MONGOD_HOST = 'localhost'
 MONGOD_PORT = 27017
 
 
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print '%r %2.2f sec' % (method.__name__, te - ts)
+        return result
+    return timed
+
+
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version):
         self.path = dbpath
@@ -30,7 +41,8 @@ class XapianIndex(object):
 
         self.databases = {}
         self.s = load_scws()
-        self.emotion_words = load_extra_dic()
+
+        # todo db and collection in schema
         self.db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb='weibo')
 
     def document_count(self, folder):
@@ -62,7 +74,8 @@ class XapianIndex(object):
         return self.databases[folder]
 
     #@profile
-    def load_and_index_weibos(self, start_time=None):
+
+    def load_weibos(self, start_time=None):
         if not debug and start_time:
             start_time = self.folders_with_date[0][0]
             end_time = start_time + datetime.timedelta(days=50)
@@ -78,9 +91,13 @@ class XapianIndex(object):
                 weibos = json.loads(f.readline())
             print 'debug mode: loaded weibos from file'
 
+        self.weibos = weibos
+
+    @timeit
+    def index_weibos(self, start_time):
         count = 0
         try:
-            for weibo in weibos:
+            for weibo in self.weibos:
                 count += 1
                 posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
                 if not debug and start_time:
@@ -458,4 +475,5 @@ if __name__ == "__main__":
 
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
     xapian_indexer.generate(start_time)
-    xapian_indexer.load_and_index_weibos(start_time)
+    xapian_indexer.load_weibos(start_time)
+    xapian_indexer.index_weibos(start_time)
