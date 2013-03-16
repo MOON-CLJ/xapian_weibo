@@ -99,10 +99,10 @@ class XapianIndex(object):
         try:
             for weibo in self.weibos:
                 count += 1
-                posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
                 if not debug and start_time:
                     folder = self.folders_with_date[0][1]
                 elif debug:
+                    posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
                     for i in xrange(len(self.folders_with_date) - 1):
                         if self.folders_with_date[i][0] <= posted_at < self.folders_with_date[i + 1][0]:
                             folder = self.folders_with_date[i][1]
