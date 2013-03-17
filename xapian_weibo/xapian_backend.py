@@ -49,7 +49,7 @@ class XapianIndex(object):
 
     def document_count(self, folder):
         try:
-            return _database(folder).get_doccount()
+            return self.get_database(folder, writable=False).get_doccount()
         except InvalidIndexError:
             return 0
 
@@ -68,9 +68,9 @@ class XapianIndex(object):
                 self.db_index_count[folder] = 0
                 start_time += step_time
 
-    def get_database(self, folder):
+    def get_database(self, folder, writable=True, debug=False):
         if folder not in self.databases:
-            self.databases[folder] = _database(folder, writable=True)
+            self.databases[folder] = _database(folder, writable=writable, debug=debug)
         return self.databases[folder]
 
     #@profile
@@ -398,7 +398,7 @@ def _marshal_term(term):
     return term
 
 
-def _database(folder, writable=False):
+def _database(folder, writable=False, debug=False):
     """
     Private method that returns a xapian.Database for use.
 
