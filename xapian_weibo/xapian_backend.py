@@ -40,7 +40,6 @@ class XapianIndex(object):
         self.schema = getattr(Schema, 'v%s' % schema_version, None)
 
         self.databases = {}
-        self.db_index_count = {}
         self.date_and_dbfolders = []
         self.s = load_scws()
 
@@ -58,14 +57,12 @@ class XapianIndex(object):
             start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d')
             folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
             self.date_and_dbfolders.append((start_time, folder))
-            self.db_index_count[folder] = 0
         elif debug:
             start_time = datetime.datetime(2009, 8, 1)
             step_time = datetime.timedelta(days=50)
             while start_time < datetime.datetime.today():
                 folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
                 self.date_and_dbfolders.append((start_time, folder))
-                self.db_index_count[folder] = 0
                 start_time += step_time
 
     def get_database(self, folder, writable=True, debug=False):
@@ -113,6 +110,7 @@ class XapianIndex(object):
 
                 self.update(folder, weibo)
                 if count % PROCESS_IDX_SIZE == 0:
+                    self.get_database(folder).commit()
                     print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
         except Exception:
             raise
@@ -122,7 +120,7 @@ class XapianIndex(object):
                 database.close()
 
             for _, folder in self.date_and_dbfolders:
-                print '[', folder, ']', 'total size', self.document_count(folder), 'index size', self.db_index_count[folder]
+                print '[', folder, ']', 'total size', self.document_count(folder)
 
     def update(self, folder, weibo):
         document = xapian.Document()
@@ -133,9 +131,6 @@ class XapianIndex(object):
         document.set_data(pickle.dumps(weibo))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
-        self.db_index_count[folder] += 1
-        if self.db_index_count[folder] % FLUSH_INDEX_SIZE == 0:
-            self.get_database(folder).commit()
 
     def index_field(self, field, document, weibo, schema_version):
         prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
