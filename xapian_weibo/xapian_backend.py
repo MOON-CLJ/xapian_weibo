@@ -44,8 +44,8 @@ class XapianIndex(object):
         self.date_and_dbfolders = []
         self.s = load_scws()
 
-        # todo db and collection in schema
-        self.db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb='weibo')
+        self.mgdb = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=self.schema['db'])
+        self.collection = self.schema['collection']
 
     def document_count(self, folder):
         try:
@@ -79,7 +79,7 @@ class XapianIndex(object):
         if not debug and start_time:
             start_time = self.date_and_dbfolders[0][0]
             end_time = start_time + datetime.timedelta(days=50)
-            weibos = self.db.statuses.find({
+            weibos = getattr(self.mgdb, self.coollection).find({
                 self.schema['posted_at_key']: {
                     '$gte': calendar.timegm(start_time.timetuple()),
                     '$lt': calendar.timegm(end_time.timetuple())
@@ -135,7 +135,7 @@ class XapianIndex(object):
         self.get_database(folder).replace_document(document_id, document)
         self.db_index_count[folder] += 1
         if self.db_index_count[folder] % FLUSH_INDEX_SIZE == 0:
-            self.get_database(folder).flush()
+            self.get_database(folder).commit()
 
     def index_field(self, field, document, weibo, schema_version):
         prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
@@ -433,6 +433,8 @@ class OperationError(Exception):
 
 class Schema:
     v1 = {
+        'db': 'weibo',
+        'collection': 'statuses',
         'obj_id': '_id',
         'posted_at_key': 'ts',
         'idx_fields': [
