@@ -79,7 +79,7 @@ class XapianIndex(object):
         if not debug and start_time:
             start_time = self.date_and_dbfolders[0][0]
             end_time = start_time + datetime.timedelta(days=50)
-            weibos = getattr(self.mgdb, self.coollection).find({
+            weibos = getattr(self.mgdb, self.collection).find({
                 self.schema['posted_at_key']: {
                     '$gte': calendar.timegm(start_time.timetuple()),
                     '$lt': calendar.timegm(end_time.timetuple())
