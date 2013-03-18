@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import scws
 import time
 import itertools
@@ -15,17 +16,11 @@ CHS_DICT_PATH = '/usr/local/scws/etc/dict.utf8.xdb'
 CHT_DICT_PATH = '/usr/local/scws/etc/dict_cht.utf8.xdb'
 IGNORE_PUNCTUATION = 1
 
-# dev
-"""
-CUSTOM_DICT_PATH = '/Users/clj/dev/xapian_weibo/dict/userdic.txt'
-EXTRA_STOPWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/stopword.dic'
-EXTRA_EMOTIONWORD_PATH = '/Users/clj/dev/xapian_weibo/dict/emotionlist.txt'
-"""
-
-# prod
-CUSTOM_DICT_PATH = '/opt/xapian_weibo/dict/userdic.txt'
-EXTRA_STOPWORD_PATH = '/opt/xapian_weibo/dict/stopword.dic'
-EXTRA_EMOTIONWORD_PATH = '/opt/xapian_weibo/dict/emotionlist.txt'
+ABSOLUTE_DICT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../dict'))
+CUSTOM_DICT_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'userdic.txt')
+EXTRA_STOPWORD_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'stopword.dic')
+EXTRA_EMOTIONWORD_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'emotionlist.txt')
+EXTRA_ONE_WORD_WHITE_LIST_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'one_word_white_list.txt')
 
 
 class SimpleMapReduce(object):
@@ -74,7 +69,7 @@ def not_low_freq_keywords(s, query, emotions_only=True, larger_than=3):
 
 def keywords(s, query, emotions_only):
     _scws = load_scws()
-    emotion_words = set(load_extra_dic())
+    emotion_words = set(load_emotion_words())
 
     results = s.search(query=query, max_offset=1000000000, fields=['text'])
     print results['hits']
@@ -132,6 +127,11 @@ def load_scws():
     return s
 
 
-def load_extra_dic():
+def load_emotion_words():
     emotion_words = [line.strip('\r\n') for line in file(EXTRA_EMOTIONWORD_PATH)]
     return emotion_words
+
+
+def load_one_words():
+    one_words = [line.strip('\r\n') for line in file(EXTRA_ONE_WORD_WHITE_LIST_PATH)]
+    return one_words

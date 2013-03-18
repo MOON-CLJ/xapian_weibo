@@ -3,8 +3,9 @@
 
 from argparse import ArgumentParser
 from query_base import Q, notQ
-from utils import load_scws
+from utils import load_scws, load_one_words
 from utils4scrapy.tk_maintain import _default_mongo
+from collections import Counter
 import os
 import sys
 import xapian
@@ -21,6 +22,9 @@ DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 MONGOD_HOST = 'localhost'
 MONGOD_PORT = 27017
+
+single_word_whitelist = set(load_one_words())
+single_word_whitelist |= set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
 
 
 def timeit(method):
@@ -142,12 +146,9 @@ class XapianIndex(object):
             elif field['field_name'] == 'text':
                 tokens = [token[0] for token
                           in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if len(token[0]) > 1]
-                for token in tokens:
-                    if len(token) <= 10:
-                        document.add_term(prefix + token)
-
-                document.add_value(field['column'], weibo[field['field_name']])
+                          if token[0] in single_word_whitelist or 20 > len(token[0]) > 3]
+                for token, count in Counter(tokens).iteritems():
+                    document.add_term(prefix + token, count)
 
 
 class XapianSearch(object):
@@ -374,12 +375,19 @@ class XapianSearch(object):
         ).size()
 
 
-def _marshal_value(value):
+def _marshal_value(value, prefunc=None):
     """
     Private utility method that converts Python values to a string for Xapian values.
+    prefunc 对值做预处理
     """
-    if isinstance(value, (int, long)):
+    if prefunc:
+        value = prefunc(value)
+    if isinstance(value, (int, long, float)):
         value = xapian.sortable_serialise(value)
+    elif isinstance(value, bool):
+        value = 1 if value else 0
+        value = xapian.sortable_serialise(value)
+    value = str(value).lower()
     return value
 
 
@@ -388,7 +396,7 @@ def _marshal_term(term):
     Private utility method that converts Python terms to a string for Xapian terms.
     """
     if isinstance(term, int):
-        term = str(term)
+        term = str(term).lower()
     return term
 
 
