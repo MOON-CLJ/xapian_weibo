@@ -113,7 +113,6 @@ class XapianIndex(object):
 
                 self.update(folder, weibo)
                 if count % PROCESS_IDX_SIZE == 0:
-                    self.get_database(folder).commit()
                     print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
         except Exception:
             raise
