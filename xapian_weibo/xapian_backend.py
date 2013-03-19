@@ -145,7 +145,7 @@ class XapianIndex(object):
             elif field['field_name'] == 'text':
                 tokens = [token[0] for token
                           in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if token[0] in single_word_whitelist or 20 > len(token[0]) > 3]
+                          if 3 < len(token[0]) < 20 or token[0] in single_word_whitelist]
                 for token, count in Counter(tokens).iteritems():
                     document.add_term(prefix + token, count)
 
