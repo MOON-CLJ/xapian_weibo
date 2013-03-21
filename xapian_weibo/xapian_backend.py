@@ -133,6 +133,7 @@ class XapianIndex(object):
         document.set_data(pickle.dumps(weibo))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
+        #self.get_database(folder).add_document(document)
 
     def index_field(self, field, document, weibo, schema_version):
         prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
@@ -145,10 +146,14 @@ class XapianIndex(object):
             elif field['field_name'] == 'text':
                 tokens = [token[0] for token
                           in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if 3 < len(token[0]) < 20 or token[0] in single_word_whitelist]
+                          if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
+                termgen = xapian.TermGenerator()
+                termgen.set_document(document)
+                termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+                """
                 for token, count in Counter(tokens).iteritems():
                     document.add_term(prefix + token, count)
-
+                """
 
 class XapianSearch(object):
     def __init__(self, path='../data/', name='statuses', schema_version=SCHEMA_VERSION):
