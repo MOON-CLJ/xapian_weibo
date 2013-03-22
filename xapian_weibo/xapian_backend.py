@@ -5,7 +5,6 @@ from argparse import ArgumentParser
 from query_base import Q, notQ
 from utils import load_scws, load_one_words
 from utils4scrapy.tk_maintain import _default_mongo
-from collections import Counter
 import os
 import sys
 import xapian
@@ -129,8 +128,11 @@ class XapianIndex(object):
         document_id = DOCUMENT_ID_TERM_PREFIX + weibo[self.schema['obj_id']]
         for field in self.schema['idx_fields']:
             self.index_field(field, document, weibo, SCHEMA_VERSION)
-
-        document.set_data(pickle.dumps(weibo))
+        if 'dumps_exclude' in self.schema:
+            for k in self.schema['dumps_exclude']:
+                if k in weibo:
+                    del weibo[k]
+        document.set_data(json.dumps(weibo))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
         #self.get_database(folder).add_document(document)
@@ -154,6 +156,7 @@ class XapianIndex(object):
                 for token, count in Counter(tokens).iteritems():
                     document.add_term(prefix + token, count)
                 """
+
 
 class XapianSearch(object):
     def __init__(self, path='../data/', name='statuses', schema_version=SCHEMA_VERSION):
@@ -441,6 +444,7 @@ class Schema:
     v1 = {
         'db': 'weibo',
         'collection': 'statuses',
+        'dumps_exclude': ['_id', '_keywords', 'hashtags', '_md5', 'emotions', 'urls'],
         'obj_id': '_id',
         'posted_at_key': 'ts',
         'idx_fields': [
