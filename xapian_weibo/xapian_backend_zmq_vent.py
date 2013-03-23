@@ -55,5 +55,5 @@ if __name__ == "__main__":
             ts = te
 
     print 'sleep to give zmq time to deliver '
-    print 'until now cost %s' % (time.time() - tb)
+    print 'until now cost %s sec' % (time.time() - tb)
     time.sleep(10)
