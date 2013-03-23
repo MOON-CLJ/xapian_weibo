@@ -45,6 +45,7 @@ if __name__ == "__main__":
 
     count = 0
     ts = time.time()
+    tb = ts
     for weibo in load_weibos(db, collection, debug):
         sender.send_json(weibo)
         count += 1
@@ -54,4 +55,5 @@ if __name__ == "__main__":
             ts = te
 
     print 'sleep to give zmq time to deliver '
+    print 'until now cost %s' % (time.time() - tb)
     time.sleep(10)
