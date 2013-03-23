@@ -38,7 +38,7 @@ def timeit(method):
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version, refresh_db=False):
         self.path = dbpath
-        self.schema = getattr(Schema, 'v%s' % schema_version, None)
+        self.schema = getattr(Schema, 'v%s' % schema_version)
         self.refresh_db = refresh_db
 
         self.databases = {}
