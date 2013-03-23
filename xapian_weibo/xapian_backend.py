@@ -8,7 +8,6 @@ from utils4scrapy.tk_maintain import _default_mongo
 import os
 import sys
 import xapian
-import cPickle as pickle
 import simplejson as json
 import datetime
 import calendar
@@ -37,12 +36,13 @@ def timeit(method):
 
 
 class XapianIndex(object):
-    def __init__(self, dbpath, schema_version):
+    def __init__(self, dbpath, schema_version, refresh_db=False):
         self.path = dbpath
         self.schema = getattr(Schema, 'v%s' % schema_version, None)
+        self.refresh_db = refresh_db
 
         self.databases = {}
-        self.date_and_dbfolders = []
+        self.ts_and_dbfolders = []
         self.s = load_scws()
 
         self.mgdb = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=self.schema['db'])
@@ -55,60 +55,67 @@ class XapianIndex(object):
             return 0
 
     def generate(self, start_time=None):
-        if not debug and start_time:
+        if start_time:
             start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d')
             folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
-            self.date_and_dbfolders.append((start_time, folder))
-        elif debug:
+            self.ts_and_dbfolders.append((calendar.timegm(start_time.timetuple()), folder))
+        else:
             start_time = datetime.datetime(2009, 8, 1)
             step_time = datetime.timedelta(days=50)
             while start_time < datetime.datetime.today():
                 folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
-                self.date_and_dbfolders.append((start_time, folder))
+                self.ts_and_dbfolders.append((calendar.timegm(start_time.timetuple()), folder))
                 start_time += step_time
 
-    def get_database(self, folder, writable=True, debug=False):
+    def get_database(self, folder, writable=True):
         if folder not in self.databases:
-            self.databases[folder] = _database(folder, writable=writable, debug=debug)
+            self.databases[folder] = _database(folder, writable=writable, refresh=self.refresh_db)
         return self.databases[folder]
 
     #@profile
 
-    def load_weibos(self, start_time=None):
-        if not debug and start_time:
-            start_time = self.date_and_dbfolders[0][0]
-            end_time = start_time + datetime.timedelta(days=50)
+    def load_weibos(self, start_time=None, mode='debug'):
+        if mode == 'idx_all':
+            weibos = getattr(self.mgdb, self.collection).find(timeout=False)
+            print 'prod mode: 从mongodb加载[%s:%s]里的所有微博' % (self.mgdb, self.collection)
+        elif mode == 'single_given_db':
+            if not start_time:
+                raise Exception('single_given_db mode 需要指定start_time')
+            start_time = self.ts_and_dbfolders[0][0]
+            end_time = start_time + datetime.timedelta(days=50).total_seconds()
             weibos = getattr(self.mgdb, self.collection).find({
                 self.schema['posted_at_key']: {
-                    '$gte': calendar.timegm(start_time.timetuple()),
-                    '$lt': calendar.timegm(end_time.timetuple())
+                    '$gte': start_time,
+                    '$lt': end_time
                 }
             }, timeout=False)
-            print 'prod mode: loaded weibos from mongod'
-        elif debug:
+            print 'prod mode: 从mongodb加载[%s:%s]里的从%s开始50天的微博' % (self.mgdb, self.collection, datetime.datetime.fromtimestamp(start_time))
+        elif mode == 'debug':
             with open("../test/sample_tweets.js") as f:
                 weibos = json.loads(f.readline())
-            print 'debug mode: loaded weibos from file'
+            print 'debug mode: 从测试数据文件中加载微博'
 
         self.weibos = weibos
 
     @timeit
-    def index_weibos(self, start_time):
+    def index_weibos(self, start_time=None, mode='debug'):
         count = 0
         try:
             for weibo in self.weibos:
                 count += 1
-                if not debug and start_time:
-                    folder = self.date_and_dbfolders[0][1]
-                elif debug:
-                    posted_at = datetime.datetime.fromtimestamp(weibo[self.schema['posted_at_key']])
-                    for i in xrange(len(self.date_and_dbfolders) - 1):
-                        if self.date_and_dbfolders[i][0] <= posted_at < self.date_and_dbfolders[i + 1][0]:
-                            folder = self.date_and_dbfolders[i][1]
+                if mode == 'single_given_db':
+                    if not start_time:
+                        raise Exception('single_given_db mode 需要指定start_time')
+                    folder = self.ts_and_dbfolders[0][1]
+                else:
+                    posted_at = weibo[self.schema['posted_at_key']]
+                    for i in xrange(len(self.ts_and_dbfolders) - 1):
+                        if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i][1]
                             break
                     else:
-                        if posted_at >= self.date_and_dbfolders[i + 1][0]:
-                            folder = self.date_and_dbfolders[i + 1][1]
+                        if posted_at >= self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i + 1][1]
 
                 self.update(folder, weibo)
                 if count % PROCESS_IDX_SIZE == 0:
@@ -120,7 +127,7 @@ class XapianIndex(object):
             for database in self.databases.itervalues():
                 database.close()
 
-            for _, folder in self.date_and_dbfolders:
+            for _, folder in self.ts_and_dbfolders:
                 print '[', folder, ']', 'total size', self.document_count(folder)
 
     def update(self, folder, weibo):
@@ -302,7 +309,7 @@ class XapianSearch(object):
         matches = self._get_enquire_mset(database, enquire, start_offset, max_offset)
 
         for match in matches:
-            weibo = pickle.loads(self._get_document_data(database, match.document))
+            weibo = json.loads(self._get_document_data(database, match.document))
             item = None
             if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
                 item = {}
@@ -407,7 +414,7 @@ def _marshal_term(term):
     return term
 
 
-def _database(folder, writable=False, debug=False):
+def _database(folder, writable=False, refresh=False):
     """
     Private method that returns a xapian.Database for use.
 
@@ -417,7 +424,7 @@ def _database(folder, writable=False, debug=False):
     Returns an instance of a xapian.Database or xapian.WritableDatabase
     """
     if writable:
-        if debug:
+        if refresh:
             database = xapian.WritableDatabase(folder, xapian.DB_CREATE_OR_OVERWRITE)
         else:
             database = xapian.WritableDatabase(folder, xapian.DB_CREATE_OR_OPEN)
@@ -464,29 +471,36 @@ if __name__ == "__main__":
     """
     parser = ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', help='DEBUG')
+    parser.add_argument('-a', '--idx_all', action='store_true', help='INDEX WHOLE COLLECTION')
     parser.add_argument('-p', '--print_folders', action='store_true', help='PRINT FOLDER THEN EXIT')
     parser.add_argument('-s', '--start_time', nargs=1, help='DATETIME')
     parser.add_argument('dbpath', help='PATH_TO_DATABASE')
+
     args = parser.parse_args(sys.argv[1:])
     debug = args.debug
+    idx_all = args.idx_all
+    start_time = args.start_time[0] if args.start_time else None
     dbpath = args.dbpath
 
     if args.print_folders:
-        debug = True
         xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
         xapian_indexer.generate()
-        for _, folder in xapian_indexer.date_and_dbfolders:
+        for _, folder in xapian_indexer.ts_and_dbfolders:
             print folder
 
         sys.exit(0)
 
-    start_time = args.start_time[0] if args.start_time else None
-    if debug:
-        if start_time:
-            print 'debug mode(warning): start_time will not be used'
-        PROCESS_IDX_SIZE = 10000
-
-    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=debug)
     xapian_indexer.generate(start_time)
-    xapian_indexer.load_weibos(start_time)
-    xapian_indexer.index_weibos(start_time)
+    if debug:
+        print 'debug mode'
+        mode = 'debug'
+    elif start_time:
+        print 'single given db mode'
+        mode = 'single_given_db'
+    elif idx_all:
+        print 'idx all collection to multi db mode'
+        mode = 'idx_all'
+
+    xapian_indexer.load_weibos(start_time, mode)
+    xapian_indexer.index_weibos(start_time, mode)
