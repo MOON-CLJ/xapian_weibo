@@ -35,6 +35,21 @@ for term in db.allterms():
 """
 
 print "** " * 10
+db = xapian.inmemory_open()
+doc1 = xapian.Document()
+doc1.add_posting(stem("新浪 微博"), 1)
+db.add_document(doc1)
+db.commit()
+
+for term in db.allterms():
+    print term.term, term.termfreq
+"""
+    新浪 微博 1
+    可以直接指定带空格的term
+"""
+
+
+print "** " * 10
 for term in doc.termlist():
     print term.term, term.wdf, list(term.positer)
 """

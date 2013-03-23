@@ -15,7 +15,7 @@ import time
 
 
 PROCESS_IDX_SIZE = 20000
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 MONGOD_HOST = 'localhost'
@@ -77,7 +77,7 @@ class XapianIndex(object):
     def load_weibos(self, start_time=None, mode='debug'):
         if mode == 'idx_all':
             weibos = getattr(self.mgdb, self.collection).find(timeout=False)
-            print 'prod mode: 从mongodb加载[%s:%s]里的所有微博' % (self.mgdb, self.collection)
+            print 'prod mode: 从mongodb加载[%s]里的所有微博' % self.collection
         elif mode == 'single_given_db':
             if not start_time:
                 raise Exception('single_given_db mode 需要指定start_time')
@@ -132,13 +132,14 @@ class XapianIndex(object):
 
     def update(self, folder, weibo):
         document = xapian.Document()
-        document_id = DOCUMENT_ID_TERM_PREFIX + weibo[self.schema['obj_id']]
+        document_id = DOCUMENT_ID_TERM_PREFIX + str(weibo[self.schema['obj_id']])
         for field in self.schema['idx_fields']:
             self.index_field(field, document, weibo, SCHEMA_VERSION)
         if 'dumps_exclude' in self.schema:
             for k in self.schema['dumps_exclude']:
                 if k in weibo:
                     del weibo[k]
+
         document.set_data(json.dumps(weibo))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
@@ -147,7 +148,7 @@ class XapianIndex(object):
     def index_field(self, field, document, weibo, schema_version):
         prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
         if schema_version == 1:
-            if field['field_name'] in ['uid', 'name']:
+            if field['field_name'] == 'uid':
                 term = _marshal_term(weibo[field['field_name']])
                 document.add_term(prefix + term)
             elif field['field_name'] == 'ts':
@@ -163,6 +164,28 @@ class XapianIndex(object):
                 for token, count in Counter(tokens).iteritems():
                     document.add_term(prefix + token, count)
                 """
+        elif schema_version == 2:
+            if field['field_name'] in ['user', 'retweeted_status']:
+                if 'retweeted_status' not in weibo:
+                    return
+                """
+                临时清数据脚本片段
+                if 'user' not in weibo:
+                    print weibo['_id']
+                    getattr(self.mgdb, self.collection).remove({'_id': weibo['_id']})
+                    return
+                """
+                term = _marshal_term(weibo[field['field_name']], self.schema['pre'][field['field_name']])
+                document.add_term(prefix + term)
+            elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
+                document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
+            elif field['field_name'] == 'text':
+                tokens = [token[0] for token
+                          in self.s.participle(weibo[field['field_name']].encode('utf-8'))
+                          if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
+                termgen = xapian.TermGenerator()
+                termgen.set_document(document)
+                termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 
 class XapianSearch(object):
@@ -405,11 +428,16 @@ def _marshal_value(value, prefunc=None):
     return value
 
 
-def _marshal_term(term):
+def _marshal_term(term, prefunc=None):
     """
     Private utility method that converts Python terms to a string for Xapian terms.
     """
-    if isinstance(term, int):
+    if term is None:
+        return ''
+
+    if prefunc:
+        term = prefunc(term)
+    if isinstance(term, (int, long)):
         term = str(term).lower()
     return term
 
@@ -456,12 +484,32 @@ class Schema:
         'posted_at_key': 'ts',
         'idx_fields': [
             {'field_name': 'uid', 'column': 0, 'type': 'long'},
-            {'field_name': 'name', 'column': 1, 'type': 'text'},
-            {'field_name': 'text', 'column': 2, 'type': 'text'},
-            {'field_name': 'ts', 'column': 3, 'type': 'long'}
+            {'field_name': 'text', 'column': 1, 'type': 'text'},
+            {'field_name': 'ts', 'column': 2, 'type': 'long'}
         ],
     }
 
+    v2 = {
+        'db': 'master_timeline',
+        'collection': 'master_timeline_weibo',
+        'dumps_exclude': ['_id', 'created_at', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'first_in', 'last_modify'],
+        'pre': {
+            'retweeted_status': lambda x: x['id'],
+            'user': lambda x: x['id']
+        },
+        'obj_id': '_id',
+        'posted_at_key': 'timestamp',
+        'idx_fields': [
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
+            {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'timestamp', 'column': 3, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 4, 'type': 'long'},
+            {'field_name': 'comments_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'attitudes_count', 'column': 6, 'type': 'long'},
+        ],
+
+    }
 
 if __name__ == "__main__":
     """
