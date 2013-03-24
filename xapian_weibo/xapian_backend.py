@@ -23,6 +23,7 @@ MONGOD_PORT = 27017
 
 single_word_whitelist = set(load_one_words())
 single_word_whitelist |= set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
+s = load_scws()
 
 
 def timeit(method):
@@ -43,7 +44,6 @@ class XapianIndex(object):
 
         self.databases = {}
         self.ts_and_dbfolders = []
-        self.s = load_scws()
 
         self.mgdb = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=self.schema['db'])
         self.collection = self.schema['collection']
@@ -146,46 +146,7 @@ class XapianIndex(object):
         #self.get_database(folder).add_document(document)
 
     def index_field(self, field, document, weibo, schema_version):
-        prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-        if schema_version == 1:
-            if field['field_name'] == 'uid':
-                term = _marshal_term(weibo[field['field_name']])
-                document.add_term(prefix + term)
-            elif field['field_name'] == 'ts':
-                document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
-            elif field['field_name'] == 'text':
-                tokens = [token[0] for token
-                          in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
-                termgen = xapian.TermGenerator()
-                termgen.set_document(document)
-                termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-                """
-                for token, count in Counter(tokens).iteritems():
-                    document.add_term(prefix + token, count)
-                """
-        elif schema_version == 2:
-            if field['field_name'] in ['user', 'retweeted_status']:
-                if 'retweeted_status' not in weibo:
-                    return
-                """
-                临时清数据脚本片段
-                if 'user' not in weibo:
-                    print weibo['_id']
-                    getattr(self.mgdb, self.collection).remove({'_id': weibo['_id']})
-                    return
-                """
-                term = _marshal_term(weibo[field['field_name']], self.schema['pre'][field['field_name']])
-                document.add_term(prefix + term)
-            elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
-                document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
-            elif field['field_name'] == 'text':
-                tokens = [token[0] for token
-                          in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
-                termgen = xapian.TermGenerator()
-                termgen.set_document(document)
-                termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+        _index_field(field, document, weibo, schema_version, self.schema)
 
 
 class XapianSearch(object):
@@ -463,6 +424,42 @@ def _database(folder, writable=False, refresh=False):
             raise InvalidIndexError(u'Unable to open index at %s' % folder)
 
     return database
+
+
+def _index_field(field, document, weibo, schema_version, schema):
+    prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
+    if schema_version == 1:
+        if field['field_name'] == 'uid':
+            term = _marshal_term(weibo[field['field_name']])
+            document.add_term(prefix + term)
+        elif field['field_name'] == 'ts':
+            document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
+        elif field['field_name'] == 'text':
+            tokens = [token[0] for token
+                      in s.participle(weibo[field['field_name']].encode('utf-8'))
+                      if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
+            termgen = xapian.TermGenerator()
+            termgen.set_document(document)
+            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+            """
+            for token, count in Counter(tokens).iteritems():
+                document.add_term(prefix + token, count)
+            """
+    elif schema_version == 2:
+        if field['field_name'] in ['user', 'retweeted_status']:
+            if 'retweeted_status' not in weibo:
+                return
+            term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
+            document.add_term(prefix + term)
+        elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
+            document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
+        elif field['field_name'] == 'text':
+            tokens = [token[0] for token
+                      in s.participle(weibo[field['field_name']].encode('utf-8'))
+                      if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
+            termgen = xapian.TermGenerator()
+            termgen.set_document(document)
+            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 
 class InvalidIndexError(Exception):

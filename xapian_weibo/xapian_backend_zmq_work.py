@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-from xapian_backend import _marshal_value, _marshal_term, _database, Schema, \
-    DOCUMENT_ID_TERM_PREFIX, DOCUMENT_CUSTOM_TERM_PREFIX, single_word_whitelist, \
-    InvalidIndexError
+from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
+    InvalidIndexError, _index_field
 from utils import load_scws
 import sys
 import os
@@ -15,7 +14,7 @@ import time
 import datetime
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PROCESS_IDX_SIZE = 10000
 
 
@@ -47,38 +46,11 @@ class XapianIndex(object):
         self.db.replace_document(document_id, document)
 
     def index_field(self, field, document, weibo, schema_version):
-        prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-        if schema_version == 1:
-            if field['field_name'] == 'uid':
-                term = _marshal_term(weibo[field['field_name']])
-                document.add_term(prefix + term)
-            elif field['field_name'] == 'ts':
-                document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
-            elif field['field_name'] == 'text':
-                tokens = [token[0] for token
-                          in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
-                termgen = xapian.TermGenerator()
-                termgen.set_document(document)
-                termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-        elif schema_version == 2:
-            if field['field_name'] in ['user', 'retweeted_status']:
-                if 'retweeted_status' not in weibo:
-                    return
-                term = _marshal_term(weibo[field['field_name']], self.schema['pre'][field['field_name']])
-                document.add_term(prefix + term)
-            elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
-                document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
-            elif field['field_name'] == 'text':
-                tokens = [token[0] for token
-                          in self.s.participle(weibo[field['field_name']].encode('utf-8'))
-                          if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
-                termgen = xapian.TermGenerator()
-                termgen.set_document(document)
-                termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+        _index_field(field, document, weibo, schema_version, self.schema)
 
     def close(self):
         self.db.close()
+        print 'total index', self.document_count()
 
 
 if __name__ == "__main__":
