@@ -3,7 +3,7 @@
 
 from argparse import ArgumentParser
 from query_base import Q, notQ
-from utils import load_scws, load_one_words
+from utils import load_scws, cut
 from utils4scrapy.tk_maintain import _default_mongo
 import os
 import sys
@@ -21,8 +21,6 @@ DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 MONGOD_HOST = 'localhost'
 MONGOD_PORT = 27017
 
-single_word_whitelist = set(load_one_words())
-single_word_whitelist |= set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
 s = load_scws()
 
 
@@ -307,7 +305,6 @@ class XapianSearch(object):
 
         return self._get_hit_count(database, enquire), result_generator
 
-
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
         A safer version of Xapian.enquire.get_mset
@@ -435,9 +432,7 @@ def _index_field(field, document, weibo, schema_version, schema):
         elif field['field_name'] == 'ts':
             document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
         elif field['field_name'] == 'text':
-            tokens = [token[0] for token
-                      in s.participle(weibo[field['field_name']].encode('utf-8'))
-                      if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
+            tokens = cut(s, weibo[field['field_name']].encode('utf-8'))
             termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
@@ -454,9 +449,7 @@ def _index_field(field, document, weibo, schema_version, schema):
         elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
             document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
         elif field['field_name'] == 'text':
-            tokens = [token[0] for token
-                      in s.participle(weibo[field['field_name']].encode('utf-8'))
-                      if 3 < len(token[0]) < 10 or token[0] in single_word_whitelist]
+            tokens = cut(s, weibo[field['field_name']].encode('utf-8'))
             termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)

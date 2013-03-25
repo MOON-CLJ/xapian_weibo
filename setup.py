@@ -5,6 +5,7 @@ setup(name='xapian_weibo',
       url='https://github.com/MOON-CLJ/xapian_weibo',
       author='CLJ',
       packages=['xapian_weibo'],
+      data_files=[('dict', ['dict/userdic.txt', 'dict/stopword.dic', 'dict/emotionlist.txt', 'dict/one_word_white_list.txt'])],
       install_requires=[
           'pymongo',
       ],

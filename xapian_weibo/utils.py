@@ -135,3 +135,13 @@ def load_emotion_words():
 def load_one_words():
     one_words = [line.strip('\r\n') for line in file(EXTRA_ONE_WORD_WHITE_LIST_PATH)]
     return one_words
+
+
+single_word_whitelist = set(load_one_words())
+single_word_whitelist |= set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
+
+
+def cut(s, text):
+    return [token[0] for token
+            in s.participle(text)
+            if 3 < len(token[0]) < 30 or token[0] in single_word_whitelist]
