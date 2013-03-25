@@ -283,30 +283,30 @@ class XapianSearch(object):
                     reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
                 sorter.add(self._value_column(sort_field), reverse)
 
-            enquire.set_sort_by_key_then_relevance(sorter, True)
-
-        results = []
+            enquire.set_sort_by_key(sorter, True)
 
         if not max_offset:
             max_offset = database.get_doccount() - start_offset
 
         matches = self._get_enquire_mset(database, enquire, start_offset, max_offset)
 
-        for match in matches:
-            weibo = json.loads(self._get_document_data(database, match.document))
-            item = None
-            if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
-                item = {}
-                for field in fields:
-                    item[field] = weibo.get(field, None)
-            else:
-                item = weibo
-            results.append(item)
+        def result_generator():
+            for match in matches:
+                weibo = json.loads(self._get_document_data(database, match.document))
+                if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
+                    item = {}
+                    if isinstance(fields, list):
+                        for field in fields:
+                            if field == 'terms':
+                                item['terms'] = dict([(term.term[5:], term.wdf) for term in match.document.termlist() if term.term.startswith('XTEXT')])
+                            else:
+                                item[field] = weibo.get(field)
+                else:
+                    item = weibo
+                yield item
 
-        return {
-            'results': results,
-            'hits': self._get_hit_count(database, enquire)
-        }
+        return self._get_hit_count(database, enquire), result_generator
+
 
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """

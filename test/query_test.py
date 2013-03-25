@@ -8,20 +8,20 @@ sys.path.append('../xapian_weibo')
 from xapian_backend import XapianSearch
 from utils import top_keywords, not_low_freq_keywords
 
-s = XapianSearch(path='../data/', name='statuses')
+s = XapianSearch(path='../data/', name='hehe')
 
-"""
-results = s.search(query={'text': [u'中国'], 'uid': 1217743083, 'ts': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-ts'], fields=['text', 'ts', 'name'])
+count, get_results = s.search(query={'$and':[{'text': [u'北京']}, {'uid': '1774800467'}]}, fields=['text', 'user', 'terms'])
+#count, get_results = s.search(query={'text': [u'北京']}, fields=['text', 'user', 'terms'])
 
 print 'query1:'
 
-for r in results['results']:
-    print r['ts']
+for r in get_results():
+    print r['user'], r['text'], r['terms']
 
-print 'hits: %s' % results['hits']
+print 'hits: %s' % count
 
-"""
 
+# 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
 """
 print 'query2:'
 query_dict = {'$and': [{'text': [u'中国'], 'uid': 1217743083},
@@ -84,7 +84,7 @@ query_dict = {'$or':
 for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
     print word, count
 """
-
+"""
 begin_ts1 = calendar.timegm(datetime.datetime(2011, 1, 1).timetuple())
 end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
 query_dict = {
@@ -95,10 +95,9 @@ query_dict = {
     'text': u'抓狂',
 }
 
-"""
 for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
     print word, count
-"""
 
 for word, count in not_low_freq_keywords(s, query_dict, emotions_only=True):
     print word, count
+"""
