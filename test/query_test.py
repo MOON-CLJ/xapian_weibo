@@ -10,13 +10,12 @@ from utils import top_keywords, not_low_freq_keywords
 
 s = XapianSearch(path='../data/', name='hehe')
 
-count, get_results = s.search(query={'$and':[{'text': [u'北京']}, {'uid': '1774800467'}]}, fields=['text', 'user', 'terms'])
-#count, get_results = s.search(query={'text': [u'北京']}, fields=['text', 'user', 'terms'])
+count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms'])
 
 print 'query1:'
 
 for r in get_results():
-    print r['user'], r['text'], r['terms']
+    print r['user'], r['text'], r['terms'], r['timestamp']
 
 print 'hits: %s' % count
 
