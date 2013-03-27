@@ -20,18 +20,30 @@ s = XapianSearch(path='../data/', name='master_timeline')
 # 若fields参数不指定，或者为None,则返回所有字段，除terms之外
 # 如果需要返回terms，请一一指定需要的字段，并包括terms
 # 简单示例如下
-count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms'])
+count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms', 'id'])
 
 print 'query1:'
 
 for r in get_results():
     print "** " * 10
+    print r['id']
     print r['user']
     print r['text']
     print r['timestamp']
     print r['terms']
 
 print 'hits: %s' % count
+
+print 'query2:'
+count, get_results = s.search(query={'_id': 3421652283071880}, fields=['text', 'timestamp', 'user', 'terms', 'id'])
+for r in get_results():
+    print "** " * 10
+    print r['id']
+    print r['user']
+    print r['text']
+    print r['timestamp']
+    print r['terms']
+
 
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
