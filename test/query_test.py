@@ -8,14 +8,28 @@ sys.path.append('../xapian_weibo')
 from xapian_backend import XapianSearch
 from utils import top_keywords, not_low_freq_keywords
 
-s = XapianSearch(path='../data/', name='hehe')
+# 默认schema_version为2
+s = XapianSearch(path='../data/', name='master_timeline')
 
+# import和初始化, 请使用下面的用法
+# from xapian_backend import XapianSearch
+# s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline')
+# 查询条件有user(id),retweeted_status(id),text,timestamp,reposts_count,comments_count,attitudes_count(从timestamp开始后面四个查询指标可以指定范围和排序)
+# 返回字段基本和新浪api的返回字段相同，注意没有created_at，而是timestamp
+# 值得注意的是新增返回字段terms，返回的是每条微博里的词和以及词频的dict（字典），所有不用自己取出来之后再分词
+# 若fields参数不指定，或者为None,则返回所有字段，除terms之外
+# 如果需要返回terms，请一一指定需要的字段，并包括terms
+# 简单示例如下
 count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms'])
 
 print 'query1:'
 
 for r in get_results():
-    print r['user'], r['text'], r['terms'], r['timestamp']
+    print "** " * 10
+    print r['user']
+    print r['text']
+    print r['timestamp']
+    print r['terms']
 
 print 'hits: %s' % count
 
