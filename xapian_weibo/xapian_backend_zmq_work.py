@@ -14,7 +14,7 @@ import time
 import datetime
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 1
 PROCESS_IDX_SIZE = 10000
 
 

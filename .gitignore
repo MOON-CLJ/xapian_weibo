@@ -5,6 +5,7 @@
 /simplehaha
 /test/_hehe*
 *.js
+*.bson
 
 *.py[co]
 *.sw[pon]
