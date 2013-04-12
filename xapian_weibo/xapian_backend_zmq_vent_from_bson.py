@@ -36,7 +36,7 @@ if __name__ == "__main__":
             te = time.time()
             print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
             if count % (PROCESS_IDX_SIZE * 100) == 0:
-                print 'total deliver %s cost: %s sec' % (count, te - tb)
+                print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
             ts = te
     bs_input.close()
 

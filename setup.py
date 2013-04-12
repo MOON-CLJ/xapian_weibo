@@ -8,6 +8,7 @@ setup(name='xapian_weibo',
       data_files=[('dict', ['dict/userdic.txt', 'dict/stopword.dic', 'dict/emotionlist.txt', 'dict/one_word_white_list.txt'])],
       install_requires=[
           'pymongo',
+          'pyzmq',
       ],
       dependency_links=[
       ],
