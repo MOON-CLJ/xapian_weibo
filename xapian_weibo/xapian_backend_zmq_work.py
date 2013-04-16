@@ -43,8 +43,8 @@ class XapianIndex(object):
 
         document.set_data(json.dumps(weibo))
         document.add_term(document_id)
-        self.db.replace_document(document_id, document)
-
+        #self.db.replace_document(document_id, document)
+        self.db.add_document(document)
     def index_field(self, field, document, weibo, schema_version):
         _index_field(field, document, weibo, schema_version, self.schema)
 
