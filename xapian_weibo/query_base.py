@@ -188,9 +188,9 @@ class QueryCompilerVisitor(QNodeVisitor):
                     if ftype == 'int' or ftype == 'long':
                         begin = value.get('$gt', 0)
                         end = value.get('$lt', sys.maxint)
-                        qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(col, '%s' % prefix))
+                        qp.add_valuerangeprocessor(xapian.NumberValueRangeProcessor(col, prefix))
                         new_query = qp.parse_query('%s%s..%s' % (prefix, begin, end))
-                elif not hasattr(value, 'strip') and hasattr(value, '__getitem__') or hasattr(value, '__iter__'):
+                elif not isinstance(value, basestring) and hasattr(value, '__getitem__') or hasattr(value, '__iter__'):
                     value = ['%s%s' % (prefix, v) for v in value]
                     #De Morgan's laws, if we want the intersection of negation sets,
                     #Firstly, we obtain the disjunction of this sets, then get negation of them
@@ -201,6 +201,9 @@ class QueryCompilerVisitor(QNodeVisitor):
                         new_query = xapian.Query(xapian.Query.OP_AND, value)
                     else:
                         new_query = xapian.Query(xapian.Query.OP_OR, value)
+                # 支持通配符*的查询
+                elif isinstance(value, basestring) and '*' in value:
+                    new_query = qp.parse_query(value, qp.FLAG_WILDCARD)
                 else:
                     new_query = xapian.Query('%s%s' % (prefix, value))
                 if pre_query:
