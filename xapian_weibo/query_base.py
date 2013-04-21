@@ -201,9 +201,6 @@ class QueryCompilerVisitor(QNodeVisitor):
                         new_query = xapian.Query(xapian.Query.OP_AND, value)
                     else:
                         new_query = xapian.Query(xapian.Query.OP_OR, value)
-                # 支持通配符*的查询
-                elif isinstance(value, basestring) and '*' in value:
-                    new_query = qp.parse_query(value, qp.FLAG_WILDCARD)
                 else:
                     new_query = xapian.Query('%s%s' % (prefix, value))
                 if pre_query:

@@ -261,10 +261,7 @@ class XapianSearch(object):
         query = self.parse_query(query)
 
         if xapian.Query.empty(query):
-            return {
-                'results': [],
-                'hits': 0,
-            }
+            return 0, lambda: []
 
         database = self.database
         enquire = xapian.Enquire(database)
