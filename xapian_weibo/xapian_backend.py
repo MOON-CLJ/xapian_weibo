@@ -256,7 +256,7 @@ class XapianSearch(object):
         return total_query
 
     def search(self, query=None, sort_by=None, start_offset=0,
-               max_offset=1000, fields=None, **kwargs):
+               max_offset=None, fields=None, **kwargs):
 
         query = self.parse_query(query)
 
@@ -351,7 +351,7 @@ class XapianSearch(object):
         for field_dict in self.schema['idx_fields']:
             if field_dict['field_name'] == field:
                 return field_dict['column']
-        return 0
+        raise ValueError('Field %s cannot be used in sort_by clause' % field)
 
     def _get_hit_count(self, database, enquire):
         """
@@ -492,9 +492,11 @@ class Schema:
         'obj_id': '_id',
         'posted_at_key': 'timestamp',
         'idx_fields': [
+            # term
             {'field_name': 'user', 'column': 0, 'type': 'long'},
             {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
             {'field_name': 'text', 'column': 2, 'type': 'text'},
+            # value
             {'field_name': 'timestamp', 'column': 3, 'type': 'long'},
             {'field_name': 'reposts_count', 'column': 4, 'type': 'long'},
             {'field_name': 'comments_count', 'column': 5, 'type': 'long'},
