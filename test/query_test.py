@@ -44,7 +44,6 @@ for r in get_results():
     print r['text']
     print r['timestamp']
     print r['terms']
-"""
 
 print 'query3:'
 begin_ts1 = calendar.timegm(datetime.datetime(2012, 1, 1).timetuple())
@@ -62,6 +61,26 @@ for r in get_results():
         print '** ' * 10
         print r
         break
+"""
+
+print 'query4:'
+begin_ts1 = calendar.timegm(datetime.datetime(2012, 1, 1).timetuple())
+end_ts1 = calendar.timegm(datetime.datetime(2013, 3, 1).timetuple())
+
+query_dict = {
+    'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
+}
+count, get_results = s.search(query=query_dict, fields=['retweeted_status', 'user'])
+print count
+uids = set()
+for r in get_results():
+    # 判断user是否为空是临时的，因为现在的索引里混了一些没有user的weibo进来
+    # 判断是否为转发微博即retweeted_status是否为空，有更好的方式，
+    # 就是上面的query3，直接在查询条件里限制,不过现在还没重新索引，所以暂时用不了
+    if r['user'] and r['retweeted_status']:
+        uids.add(r['user']['id'])
+
+print len(uids)
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
 """
