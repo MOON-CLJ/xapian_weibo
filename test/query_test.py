@@ -20,6 +20,7 @@ s = XapianSearch(path='../data/', name='master_timeline')
 # 若fields参数不指定，或者为None,则返回所有字段，除terms之外
 # 如果需要返回terms，请一一指定需要的字段，并包括terms
 # 简单示例如下
+"""
 count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms', 'id'])
 
 print 'query1:'
@@ -43,8 +44,24 @@ for r in get_results():
     print r['text']
     print r['timestamp']
     print r['terms']
+"""
 
+print 'query3:'
+begin_ts1 = calendar.timegm(datetime.datetime(2012, 1, 1).timetuple())
+end_ts1 = calendar.timegm(datetime.datetime(2013, 3, 1).timetuple())
 
+query_dict = {
+    'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
+    '$not': {'retweeted_status': '0'}
+}
+count, get_results = s.search(query=query_dict, fields=['retweeted_status', 'user'])
+print count
+print get_results
+for r in get_results():
+    if r['retweeted_status'] is None:
+        print '** ' * 10
+        print r
+        break
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
 """
