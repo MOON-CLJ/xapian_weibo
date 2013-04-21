@@ -148,7 +148,7 @@ class XapianIndex(object):
 
 
 class XapianSearch(object):
-    def __init__(self, path='../data/', name='statuses', schema_version=SCHEMA_VERSION):
+    def __init__(self, path, name='statuses', schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return xapian.Database(dbpath)
 
@@ -438,9 +438,14 @@ def _index_field(field, document, weibo, schema_version, schema):
                 document.add_term(prefix + token, count)
             """
     elif schema_version == 2:
-        if field['field_name'] in ['user', 'retweeted_status']:
-            if 'retweeted_status' not in weibo:
-                return
+        # 可选字段存为0
+        if field['field_name'] in ['retweeted_status']:
+            if field['field_name'] in weibo:
+                term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
+            else:
+                term = '0'
+            document.add_term(prefix + term)
+        elif field['field_name'] in ['user']:
             term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
             document.add_term(prefix + term)
         elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
@@ -466,7 +471,7 @@ class Schema:
     v1 = {
         'db': 'weibo',
         'collection': 'statuses',
-        'dumps_exclude': ['_id', '_keywords', 'hashtags', '_md5', 'emotions', 'urls'],
+        'dumps_exclude': ['_keywords', 'hashtags', '_md5', 'emotions', 'urls'],
         'obj_id': '_id',
         'posted_at_key': 'ts',
         'idx_fields': [
@@ -495,10 +500,9 @@ class Schema:
             {'field_name': 'comments_count', 'column': 5, 'type': 'long'},
             {'field_name': 'attitudes_count', 'column': 6, 'type': 'long'},
         ],
-
     }
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     """
     cd data/
     then run 'py (-m memory_profiler) ../xapian_weibo/xapian_backend.py -d hehe'
