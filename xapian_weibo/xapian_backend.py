@@ -160,7 +160,7 @@ class XapianSearch(object):
                                map(create,
                                    [path + p for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
-        self.schema = getattr(Schema, 'v%s' % schema_version, None)
+        self.schema = getattr(Schema, 'v%s' % schema_version)
 
     def parse_query(self, query_dict):
         """
@@ -266,6 +266,8 @@ class XapianSearch(object):
         database = self.database
         enquire = xapian.Enquire(database)
         enquire.set_query(query)
+        if 'collapse_valueno' in self.schema:
+            enquire.set_collapse_key(self.schema['collapse_valueno'])
 
         if sort_by:
             sorter = xapian.MultiValueSorter()
@@ -438,16 +440,18 @@ def _index_field(field, document, weibo, schema_version, schema):
                 document.add_term(prefix + token, count)
             """
     elif schema_version == 2:
-        # 可选字段存为0
+        # 可选term存为0
         if field['field_name'] in ['retweeted_status']:
             if field['field_name'] in weibo:
                 term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
             else:
                 term = '0'
             document.add_term(prefix + term)
+        # 必选term
         elif field['field_name'] in ['user']:
             term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
             document.add_term(prefix + term)
+        # value
         elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
             document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
         elif field['field_name'] == 'text':
@@ -475,8 +479,10 @@ class Schema:
         'obj_id': '_id',
         'posted_at_key': 'ts',
         'idx_fields': [
+            # term
             {'field_name': 'uid', 'column': 0, 'type': 'long'},
             {'field_name': 'text', 'column': 1, 'type': 'text'},
+            # value
             {'field_name': 'ts', 'column': 2, 'type': 'long'}
         ],
     }
@@ -490,6 +496,8 @@ class Schema:
             'user': lambda x: x['id']
         },
         'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
         'posted_at_key': 'timestamp',
         'idx_fields': [
             # term
@@ -497,10 +505,11 @@ class Schema:
             {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
             {'field_name': 'text', 'column': 2, 'type': 'text'},
             # value
-            {'field_name': 'timestamp', 'column': 3, 'type': 'long'},
-            {'field_name': 'reposts_count', 'column': 4, 'type': 'long'},
-            {'field_name': 'comments_count', 'column': 5, 'type': 'long'},
-            {'field_name': 'attitudes_count', 'column': 6, 'type': 'long'},
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'comments_count', 'column': 6, 'type': 'long'},
+            {'field_name': 'attitudes_count', 'column': 7, 'type': 'long'},
         ],
     }
 
