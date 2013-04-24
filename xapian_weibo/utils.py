@@ -141,12 +141,18 @@ single_word_whitelist = set(load_one_words())
 single_word_whitelist |= set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
 
 
-def cut(s, text, f=None):
+def cut(s, text, f=None, cx=False):
     if f:
-        return [token[0] for token
-                in s.participle(text)
-                if token[1] in f and (3 < len(token[0]) < 30 or token[0] in single_word_whitelist)]
+        tks = [token for token
+               in s.participle(text)
+               if token[1] in f and (3 < len(token[0]) < 30 or token[0] in single_word_whitelist)]
     else:
-        return [token[0] for token
-                in s.participle(text)
-                if 3 < len(token[0]) < 30 or token[0] in single_word_whitelist]
+        tks = [token for token
+               in s.participle(text)
+               if 3 < len(token[0]) < 30 or token[0] in single_word_whitelist]
+
+    if cx:
+        return tks
+    else:
+        return [tk[0] for tk in tks]
+
