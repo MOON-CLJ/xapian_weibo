@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 
 from riak.client import RiakClient
-from xapian_backend import XapianSearch
+from xapian_weibo.xapian_backend import XapianSearch
+from xapian_weibo.utils import load_emotion_words
+import datetime
 import time
+import opencc
+import re
+
+cc = opencc.OpenCC('mix2s')
+emotions_words = load_emotion_words()
 
 Nodes = [
     {'host': '219.224.135.60', 'pb_port': 10017, 'http_port': 10018},
@@ -11,24 +18,25 @@ Nodes = [
     {'host': '219.224.135.60', 'pb_port': 10047, 'http_port': 10048},
     {'host': '219.224.135.60', 'pb_port': 10057, 'http_port': 10058},
 ]
-s = XapianSearch(path='../data/', name='master_timeline')
+s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline')
 
 def timeit(method):
     def timed(*args, **kw):
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
-        print '%r %2.2f sec' % (method.__name__, te-ts)
+        print '%r %2.2f sec' % (method.__name__, te - ts)
         return result
     return timed
 
 
+@timeit
 def load_weibos_from_xapian():
-    begin_ts1 = calendar.timegm(datetime.datetime(2009, 8, 1).timetuple())
-    end_ts1 = calendar.timegm(datetime.datetime(2013, 4, 1).timetuple())
+    begin_ts = time.mktime(datetime.datetime(2009, 8, 1).timetuple())
+    end_ts = time.mktime(datetime.datetime(2013, 4, 1).timetuple())
 
     query_dict = {
-        'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
+        'timestamp': {'$gt': begin_ts, '$lt': end_ts},
     }
     count, get_results = s.search(query=query_dict, fields=['id', 'retweeted_status', 'text', 'terms'])
     print count
@@ -37,16 +45,36 @@ def load_weibos_from_xapian():
 
 @timeit
 def store2riak(get_results):
+    cc = opencc.OpenCC('mix2s')
+    emotions_words_set = set(load_emotion_words())
+    weibo_is_retweet_status_bucket = client.bucket('lijun_weibo_is_retweet_status')
+    weibo_emoticoned = client.bucket('lijun_weibo_emoticoned')
+    weibo_empty_retweet = client.bucket('lijun_weibo_empty_retweet')
+
     count = 0
     for r in get_results():
-        # 微博是否为转发微博
-        weibo_is_retweet_status_bucket = client.bucket('lijun_weibo_is_retweet_status')
-        is_retweet_status_bucket = 1 if weibo['retweeted_status'] else 0
-        new_node = weibo_is_retweet_status_bucket.new(weibo['id'], data=is_retweet_status_bucket)
-        new_node.store()
-        count += 1
+        id_str = str(r['id'])
 
-    print 'total store count:', count
+        # 微博是否为转发微博
+        is_retweet_status = 1 if r['retweeted_status'] else 0
+        new_node = weibo_is_retweet_status_bucket.new(id_str, data=is_retweet_status)
+        new_node.store(return_body=False)
+
+        # 微博是否包含指定的表情符号集
+        emotions = re.findall(r'\[(\S+?)\]', r['text'])
+        emotions = [cc.convert(e).encode('utf-8') for e in emotions]
+        is_emoticoned = 1 if set(emotions) & emotions_words_set else 0
+        new_node = weibo_emoticoned.new(id_str, data=is_emoticoned)
+        new_node.store(return_body=False)
+
+        # 是否为转发微博几个字
+        is_empty_retweet = 1 if r['text'] in [u'转发微博', u'轉發微博', u'Repost'] else 0
+        new_node = weibo_empty_retweet.new(id_str, data=is_empty_retweet)
+        new_node.store(return_body=False)
+
+        count += 1
+        if count % 3333 == 0:
+            print '.'
 
 
 @timeit
@@ -92,13 +120,11 @@ if __name__ == '__main__':
     """
 
     # test performance
-    n = 10000
+    """
+    n = 100000
     test_riak_write(test_bucket, n)
     test_riak_read(test_bucket, n)
     """
-    print 'load weibos from xapian begin'
-    get_results = loaad_weibos_from_xapian()
-    print 'load weibos from xapian end'
 
+    get_results = load_weibos_from_xapian()
     store2riak(get_results)
-    """
