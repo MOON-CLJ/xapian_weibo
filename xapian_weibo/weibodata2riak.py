@@ -30,8 +30,9 @@ def timeit(method):
 
 @timeit
 def load_weibos_from_xapian():
-    begin_ts = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
-    end_ts = time.mktime(datetime.datetime(2013, 5, 1).timetuple())
+    today = datetime.datetime.today()
+    end_ts = time.mktime(datetime.datetime(today.year, today.month, today.day, 2, 0).timetuple())
+    begin_ts = end_ts - 39 * 24 * 3600
 
     query_dict = {
         'timestamp': {'$gt': begin_ts, '$lt': end_ts},
