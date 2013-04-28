@@ -4,6 +4,7 @@
 /data
 /simplehaha
 /test/_hehe*
+test/leveldb*
 *.js
 *.bson
 

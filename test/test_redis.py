@@ -16,38 +16,38 @@ def timeit(method):
 
 @timeit
 def test_redis_string_single_write(n):
-    for i in range(n):
+    for i in xrange(n):
         r.set(str(i), i)
 
 
 @timeit
 def test_redis_string_read(n):
-    for i in range(n):
+    for i in xrange(n):
         r.get(str(i))
 
 
 @timeit
 def test_redis_hash_single_write(n):
-    for i in range(n):
+    for i in xrange(n):
         r.hset('test_hash', str(i), i)
 
 
 @timeit
 def test_redis_hash_read(n):
-    for i in range(n):
+    for i in xrange(n):
         r.hget('test_hash', str(i))
 
 
 @timeit
 def test_redis_set_single_write(n):
-    for i in range(n):
+    for i in xrange(n):
         r.sadd('test_set', str(i))
 
 
 @timeit
 def test_redis_set_pipeline_write(n):
     pipe = r.pipeline()
-    for i in range(n):
+    for i in xrange(n):
         pipe.sadd('test_set', str(i))
     pipe.execute()
 
@@ -55,13 +55,13 @@ def test_redis_set_pipeline_write(n):
 @timeit
 def test_redis_hash_pipeline_write(n):
     pipe = r.pipeline()
-    for i in range(n):
+    for i in xrange(n):
         r.hset('test_hash', str(i), i)
     pipe.execute()
 
 
 def clear(n):
-    for i in range(n):
+    for i in xrange(n):
         r.delete(str(i))
     r.delete('test_hash')
     r.delete('test_set')
@@ -89,4 +89,14 @@ if __name__ == '__main__':
     'test_redis_set_single_write' args: (100000,) 5.52 sec
     'test_redis_set_pipeline_write' args: (100000,) 1.15 sec
     'test_redis_hash_pipeline_write' args: (100000,) 6.04 sec
+
+    vs
+
+    'test_redis_string_single_write' args: (100000,) 7.84 sec
+    'test_redis_string_read' args: (100000,) 8.06 sec
+    'test_redis_hash_single_write' args: (100000,) 8.22 sec
+    'test_redis_hash_read' args: (100000,) 7.25 sec
+    'test_redis_set_single_write' args: (100000,) 7.49 sec
+    'test_redis_set_pipeline_write' args: (100000,) 1.10 sec
+    'test_redis_hash_pipeline_write' args: (100000,) 7.02 sec
     """
