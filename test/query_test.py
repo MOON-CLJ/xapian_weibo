@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import sys
-import  calendar
+import time
 import datetime
 
 sys.path.append('../xapian_weibo')
@@ -46,8 +46,8 @@ for r in get_results():
     print r['terms']
 
 print 'query3:'
-begin_ts1 = calendar.timegm(datetime.datetime(2012, 1, 1).timetuple())
-end_ts1 = calendar.timegm(datetime.datetime(2013, 3, 1).timetuple())
+begin_ts1 = time.mktime(datetime.datetime(2012, 1, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2013, 3, 1).timetuple())
 
 query_dict = {
     'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
@@ -64,8 +64,8 @@ for r in get_results():
 """
 
 print 'query4:'
-begin_ts1 = calendar.timegm(datetime.datetime(2012, 1, 1).timetuple())
-end_ts1 = calendar.timegm(datetime.datetime(2013, 3, 1).timetuple())
+begin_ts1 = time.mktime(datetime.datetime(2012, 1, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2013, 3, 1).timetuple())
 
 query_dict = {
     'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
@@ -104,10 +104,10 @@ print 'hits: %s' % results['hits']
 print s.parse_query(query_dict)
 """
 """
-begin_ts1 = calendar.timegm(datetime.datetime(2011, 10, 1).timetuple())
-end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
-begin_ts2 = calendar.timegm(datetime.datetime(2010, 10, 1).timetuple())
-end_ts2 = calendar.timegm(datetime.datetime(2010, 12, 31).timetuple())
+begin_ts1 = time.mktime(datetime.datetime(2011, 10, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2011, 12, 31).timetuple())
+begin_ts2 = time.mktime(datetime.datetime(2010, 10, 1).timetuple())
+end_ts2 = time.mktime(datetime.datetime(2010, 12, 31).timetuple())
 
 query_dict = {'$or':
               [{'ts': {
@@ -126,10 +126,10 @@ print results['hits']
 """
 
 """
-begin_ts1 = calendar.timegm(datetime.datetime(2011, 10, 1).timetuple())
-end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
-begin_ts2 = calendar.timegm(datetime.datetime(2010, 10, 1).timetuple())
-end_ts2 = calendar.timegm(datetime.datetime(2010, 12, 31).timetuple())
+begin_ts1 = time.mktime(datetime.datetime(2011, 10, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2011, 12, 31).timetuple())
+begin_ts2 = time.mktime(datetime.datetime(2010, 10, 1).timetuple())
+end_ts2 = time.mktime(datetime.datetime(2010, 12, 31).timetuple())
 
 query_dict = {'$or':
               [{'ts': {
@@ -146,8 +146,8 @@ for word, count in top_keywords(s, query_dict, emotions_only=True, top=1000):
     print word, count
 """
 """
-begin_ts1 = calendar.timegm(datetime.datetime(2011, 1, 1).timetuple())
-end_ts1 = calendar.timegm(datetime.datetime(2011, 12, 31).timetuple())
+begin_ts1 = time.mktime(datetime.datetime(2011, 1, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2011, 12, 31).timetuple())
 query_dict = {
     'ts': {
         '$gt': begin_ts1,
