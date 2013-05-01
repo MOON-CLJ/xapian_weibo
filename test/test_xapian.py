@@ -4,8 +4,6 @@ import time
 import datetime
 from xapian_weibo.xapian_backend import XapianSearch
 
-s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline')
-
 
 def timeit(method):
     def timed(*args, **kw):
@@ -18,6 +16,11 @@ def timeit(method):
 
 
 @timeit
+def init_xapian():
+    return XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline')
+
+
+@timeit
 def load_weibos_from_xapian():
     begin_ts = time.mktime(datetime.datetime(2012, 1, 1).timetuple())
     end_ts = time.mktime(datetime.datetime(2013, 3, 1).timetuple())
@@ -25,7 +28,7 @@ def load_weibos_from_xapian():
     query_dict = {
         'timestamp': {'$gt': begin_ts, '$lt': end_ts},
     }
-    count, get_results = s.search(query=query_dict, fields=['id', 'retweeted_status', 'text'])
+    count, get_results = s.search(query=query_dict, max_offset=1000000, fields=['id', 'retweeted_status', 'text'])
     print count
     return get_results
 
@@ -39,6 +42,7 @@ def test_xapian_read(get_results, n):
             break
 
 if __name__ == '__main__':
+    s = init_xapian()
     get_results = load_weibos_from_xapian()
     test_xapian_read(get_results, 10000)
     test_xapian_read(get_results, 100000)
