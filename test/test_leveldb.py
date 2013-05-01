@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import time
 import leveldb
 
@@ -41,20 +44,23 @@ if __name__ == '__main__':
     test_leveldb_single_read(n)
     test_leveldb_multi_write(n)
 
-    """
-    'test_leveldb_single_write' args: (400000,) 1.22 sec
-    'test_leveldb_single_read' args: (400000,) 1.53 sec
-    'test_leveldb_multi_write' args: (400000,) 1.22 sec
-
-    'test_leveldb_single_write' args: (1000000,) 2.91 sec
-    'test_leveldb_single_read' args: (1000000,) 3.73 sec
-    'test_leveldb_multi_write' args: (1000000,) 2.82 sec
-    """
+    # 初始化推荐使用参数
     db = leveldb.LevelDB('./leveldb1', block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
     test_leveldb_single_write(n)
     test_leveldb_single_read(n)
     test_leveldb_multi_write(n)
 
+    """
+    'test_leveldb_single_write' args: (1000000,) 18.67 sec
+    'test_leveldb_single_read' args: (1000000,) 3.92 sec
+    'test_leveldb_multi_write' args: (1000000,) 5.44 sec
+
+    'test_leveldb_single_write' args: (1000000,) 3.42 sec
+    'test_leveldb_single_read' args: (1000000,) 2.39 sec
+    'test_leveldb_multi_write' args: (1000000,) 5.07 sec
+    说明batch写影响不大，但是参数调整对单条写影响很大
+    """
+    """
     n = 10000000
     db = leveldb.LevelDB('./leveldb2', block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
     test_leveldb_single_write(n)
@@ -65,3 +71,4 @@ if __name__ == '__main__':
     test_leveldb_single_write(n)
     test_leveldb_single_read(n)
     test_leveldb_multi_write(n)
+    """

@@ -5,6 +5,7 @@
 /simplehaha
 /test/_hehe*
 test/leveldb*
+test/plyvel*
 *.js
 *.bson
 
