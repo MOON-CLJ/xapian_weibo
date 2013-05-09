@@ -60,3 +60,10 @@ if __name__ == '__main__':
     db.connect('testdb')
     test_rw(10000)
     db.dropdb('testdb')
+
+    """
+    load 100000 weibos
+    'load_weibos_from_mongo' args: 7.71 sec
+    'elevator_multi_read' args: 14.73 sec
+    结论是elevator并不足以投入prod使用
+    """
