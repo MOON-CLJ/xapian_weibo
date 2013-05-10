@@ -9,6 +9,7 @@ import os
 import sys
 import xapian
 import simplejson as json
+import msgpack
 import datetime
 import calendar
 import time
@@ -138,7 +139,12 @@ class XapianIndex(object):
                 if k in weibo:
                     del weibo[k]
 
-        document.set_data(json.dumps(weibo))
+        if 'pre' in self.schema:
+            for k in self.schema['pre']:
+                if k in weibo:
+                    weibo[k] = self.schema['pre'][k](weibo[k])
+
+        document.set_data(msgpack.packb(weibo))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
         #self.get_database(folder).add_document(document)
@@ -289,7 +295,7 @@ class XapianSearch(object):
 
         def result_generator():
             for match in matches:
-                weibo = json.loads(self._get_document_data(database, match.document))
+                weibo = msgpack.unpackb(self._get_document_data(database, match.document))
                 if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
                     item = {}
                     if isinstance(fields, list):
@@ -439,13 +445,11 @@ def _index_field(field, document, weibo, schema_version, schema):
             for token, count in Counter(tokens).iteritems():
                 document.add_term(prefix + token, count)
             """
+
     elif schema_version == 2:
         # 可选term存为0
         if field['field_name'] in ['retweeted_status']:
-            if field['field_name'] in weibo:
-                term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
-            else:
-                term = '0'
+            term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in weibo else '0'
             document.add_term(prefix + term)
         # 必选term
         elif field['field_name'] in ['user']:
@@ -490,7 +494,7 @@ class Schema:
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
-        'dumps_exclude': ['_id', 'created_at', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'first_in', 'last_modify'],
+        'dumps_exclude': ['id', 'mid', 'created_at', 'source', 'comments_count', 'attitudes_count', 'bmiddle_pic', 'original_pic', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'reposts', 'comments', 'first_in', 'last_modify'],
         'pre': {
             'retweeted_status': lambda x: x['id'],
             'user': lambda x: x['id']
@@ -508,8 +512,6 @@ class Schema:
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
             {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
-            {'field_name': 'comments_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'attitudes_count', 'column': 7, 'type': 'long'},
         ],
     }
 

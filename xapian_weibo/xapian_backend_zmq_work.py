@@ -8,7 +8,7 @@ import sys
 import os
 import signal
 import xapian
-import simplejson as json
+import msgpack
 import zmq
 import time
 import datetime
@@ -41,10 +41,16 @@ class XapianIndex(object):
                 if k in weibo:
                     del weibo[k]
 
-        document.set_data(json.dumps(weibo))
+        if 'pre' in self.schema:
+            for k in self.schema['pre']:
+                if k in weibo:
+                    weibo[k] = self.schema['pre'][k](weibo[k])
+
+        document.set_data(msgpack.packb(weibo))
         document.add_term(document_id)
         #self.db.replace_document(document_id, document)
         self.db.add_document(document)
+
     def index_field(self, field, document, weibo, schema_version):
         _index_field(field, document, weibo, schema_version, self.schema)
 
