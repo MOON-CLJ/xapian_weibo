@@ -8,7 +8,7 @@ import zmq
 BSON_FILEPATH = "/opt/backup/mongodump/20130129/weibo/statuses.bson"
 
 
-def load_weibos(bs_filepath=BSON_FILEPATH):
+def load_items(bs_filepath=BSON_FILEPATH):
     print 'bson file mode: 从备份的BSON文件中加载微博'
     bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
     return bs_input
@@ -28,9 +28,9 @@ if __name__ == "__main__":
     count = 0
     ts = time.time()
     tb = ts
-    bs_input = load_weibos()
-    for _id, weibo in bs_input.reads():
-        sender.send_json(weibo)
+    bs_input = load_items()
+    for _id, item in bs_input.reads():
+        sender.send_json(item)
         count += 1
         if count % PROCESS_IDX_SIZE == 0:
             te = time.time()
