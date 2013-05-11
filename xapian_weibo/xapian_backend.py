@@ -154,7 +154,7 @@ class XapianIndex(object):
 
 
 class XapianSearch(object):
-    def __init__(self, path, name='statuses', schema_version=SCHEMA_VERSION):
+    def __init__(self, path, name='master_timeline_weibo', schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return xapian.Database(dbpath)
 
@@ -295,7 +295,7 @@ class XapianSearch(object):
 
         def result_generator():
             for match in matches:
-                weibo = msgpack.unpackb(self._get_document_data(database, match.document))
+                r = msgpack.unpackb(self._get_document_data(database, match.document))
                 if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
                     item = {}
                     if isinstance(fields, list):
@@ -303,9 +303,9 @@ class XapianSearch(object):
                             if field == 'terms':
                                 item['terms'] = dict([(term.term[5:], term.wdf) for term in match.document.termlist() if term.term.startswith('XTEXT')])
                             else:
-                                item[field] = weibo.get(field)
+                                item[field] = r.get(field)
                 else:
-                    item = weibo
+                    item = r
                 yield item
 
         return self._get_hit_count(database, enquire), result_generator
