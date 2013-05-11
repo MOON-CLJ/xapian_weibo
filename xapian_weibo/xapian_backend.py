@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from query_base import Q, notQ
 from utils import load_scws, cut
 from utils4scrapy.tk_maintain import _default_mongo
+from utils4scrapy.utils import local2unix
 import os
 import sys
 import xapian
@@ -382,6 +383,9 @@ def _marshal_value(value, prefunc=None):
     Private utility method that converts Python values to a string for Xapian values.
     prefunc 对值做预处理
     """
+    if value is None:
+        return 0
+
     if prefunc:
         value = prefunc(value)
     if isinstance(value, (int, long, float)):
@@ -442,7 +446,7 @@ def _index_field(field, document, item, schema_version, schema):
             term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']])
             document.add_term(prefix + term)
         # value
-        elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
+        elif field['field_name'] in ['_id', 'timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
             document.add_value(field['column'], _marshal_value(item[field['field_name']]))
         elif field['field_name'] == 'text':
             tokens = cut(s, item[field['field_name']].encode('utf-8'))
@@ -455,7 +459,18 @@ def _index_field(field, document, item, schema_version, schema):
             """
 
     elif schema_version == 1:
-        pass
+        # 必选term
+        if field['field_name'] in ['name', 'location', 'province']:
+            term = _marshal_term(item[field['field_name']])
+            document.add_term(prefix + term)
+        # 可选value
+        elif field['field_name'] in ['created_at']:
+            value = _marshal_value(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else 0
+            document.add_value(field['column'], value)
+        # 必选value
+        elif field['field_name'] in ['_id', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count']:
+            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
+
 
 class InvalidIndexError(Exception):
     """Raised when an index can not be opened."""
@@ -497,13 +512,14 @@ class Schema:
         'collection': 'master_timeline_user',
         'dumps_exclude': ['id', 'first_in', 'last_modify'],
         'pre': {
+            'created_at': lambda x: local2unix(x)
         },
         'obj_id': '_id',
         # 用于去重的value no(column)
         'collapse_valueno': 3,
         'idx_fields': [
             # term
-            {'field_name': 'name', 'column': 0, 'type': 'text'},
+            {'field_name': 'name', 'column': 0, 'type': 'term'},
             {'field_name': 'location', 'column': 1, 'type': 'term'},
             {'field_name': 'province', 'column': 2, 'type': 'term'},
             # value
