@@ -31,28 +31,28 @@ class XapianIndex(object):
         except InvalidIndexError:
             return 0
 
-    def update(self, weibo):
+    def update(self, item):
         document = xapian.Document()
-        document_id = DOCUMENT_ID_TERM_PREFIX + str(weibo[self.schema['obj_id']])
+        document_id = DOCUMENT_ID_TERM_PREFIX + str(item[self.schema['obj_id']])
         for field in self.schema['idx_fields']:
-            self.index_field(field, document, weibo, SCHEMA_VERSION)
+            self.index_field(field, document, item, SCHEMA_VERSION)
         if 'dumps_exclude' in self.schema:
             for k in self.schema['dumps_exclude']:
-                if k in weibo:
-                    del weibo[k]
+                if k in item:
+                    del item[k]
 
         if 'pre' in self.schema:
             for k in self.schema['pre']:
-                if k in weibo:
-                    weibo[k] = self.schema['pre'][k](weibo[k])
+                if k in item:
+                    item[k] = self.schema['pre'][k](item[k])
 
-        document.set_data(msgpack.packb(weibo))
+        document.set_data(msgpack.packb(item))
         document.add_term(document_id)
         #self.db.replace_document(document_id, document)
         self.db.add_document(document)
 
-    def index_field(self, field, document, weibo, schema_version):
-        _index_field(field, document, weibo, schema_version, self.schema)
+    def index_field(self, field, document, item, schema_version):
+        _index_field(field, document, item, schema_version, self.schema)
 
     def close(self):
         self.db.close()
@@ -89,8 +89,8 @@ if __name__ == "__main__":
     count = 0
     ts = time.time()
     while 1:
-        weibo = receiver.recv_json()
-        xapian_indexer.update(weibo)
+        item = receiver.recv_json()
+        xapian_indexer.update(item)
         count += 1
         if count % PROCESS_IDX_SIZE == 0:
             te = time.time()
