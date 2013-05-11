@@ -428,16 +428,22 @@ def _database(folder, writable=False, refresh=False):
     return database
 
 
-def _index_field(field, document, weibo, schema_version, schema):
+def _index_field(field, document, item, schema_version, schema):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-    if schema_version == 1:
-        if field['field_name'] == 'uid':
-            term = _marshal_term(weibo[field['field_name']])
+    if schema_version == 2:
+        # 可选term存为0
+        if field['field_name'] in ['retweeted_status']:
+            term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else '0'
             document.add_term(prefix + term)
-        elif field['field_name'] == 'ts':
-            document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
+        # 必选term
+        elif field['field_name'] in ['user']:
+            term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']])
+            document.add_term(prefix + term)
+        # value
+        elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
+            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
         elif field['field_name'] == 'text':
-            tokens = cut(s, weibo[field['field_name']].encode('utf-8'))
+            tokens = cut(s, item[field['field_name']].encode('utf-8'))
             termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
@@ -446,24 +452,8 @@ def _index_field(field, document, weibo, schema_version, schema):
                 document.add_term(prefix + token, count)
             """
 
-    elif schema_version == 2:
-        # 可选term存为0
-        if field['field_name'] in ['retweeted_status']:
-            term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in weibo else '0'
-            document.add_term(prefix + term)
-        # 必选term
-        elif field['field_name'] in ['user']:
-            term = _marshal_term(weibo[field['field_name']], schema['pre'][field['field_name']])
-            document.add_term(prefix + term)
-        # value
-        elif field['field_name'] in ['timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
-            document.add_value(field['column'], _marshal_value(weibo[field['field_name']]))
-        elif field['field_name'] == 'text':
-            tokens = cut(s, weibo[field['field_name']].encode('utf-8'))
-            termgen = xapian.TermGenerator()
-            termgen.set_document(document)
-            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-
+    elif schema_version == 1:
+        pass
 
 class InvalidIndexError(Exception):
     """Raised when an index can not be opened."""
@@ -476,21 +466,6 @@ class OperationError(Exception):
 
 
 class Schema:
-    v1 = {
-        'db': 'weibo',
-        'collection': 'statuses',
-        'dumps_exclude': ['_keywords', 'hashtags', '_md5', 'emotions', 'urls'],
-        'obj_id': '_id',
-        'posted_at_key': 'ts',
-        'idx_fields': [
-            # term
-            {'field_name': 'uid', 'column': 0, 'type': 'long'},
-            {'field_name': 'text', 'column': 1, 'type': 'text'},
-            # value
-            {'field_name': 'ts', 'column': 2, 'type': 'long'}
-        ],
-    }
-
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
@@ -515,7 +490,7 @@ class Schema:
         ],
     }
 
-    v3 = {
+    v1 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
         'dumps_exclude': ['id', 'first_in', 'last_modify'],
