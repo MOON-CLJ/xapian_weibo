@@ -16,15 +16,15 @@ db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=schema['db'])
 collection = schema['collection']
 
 
-def load_weibos(db, collection, debug=False):
+def load_items(db, collection, debug=False):
     if not debug:
-        weibos = getattr(db, collection).find(timeout=False)
-        print 'prod mode: 从mongodb加载[%s]里的所有微博' % collection
+        items = getattr(db, collection).find(timeout=False)
+        print 'prod mode: 从mongodb加载[%s]里的所有数据' % collection
     else:
         with open("../test/sample_tweets.js") as f:
-            weibos = json.loads(f.readline())
-        print 'debug mode: 从测试数据文件中加载微博'
-    return weibos
+            items = json.loads(f.readline())
+        print 'debug mode: 从测试数据文件中加载数据'
+    return items
 
 
 if __name__ == "__main__":
@@ -46,8 +46,8 @@ if __name__ == "__main__":
     count = 0
     ts = time.time()
     tb = ts
-    for weibo in load_weibos(db, collection, debug):
-        sender.send_json(weibo)
+    for item in load_items(db, collection, debug):
+        sender.send_json(item)
         count += 1
         if count % PROCESS_IDX_SIZE == 0:
             te = time.time()
