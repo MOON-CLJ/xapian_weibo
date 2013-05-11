@@ -519,17 +519,23 @@ class Schema:
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
         'dumps_exclude': ['id', 'first_in', 'last_modify'],
+        'pre': {
+        },
         'obj_id': '_id',
         # 用于去重的value no(column)
         'collapse_valueno': 3,
         'idx_fields': [
             # term
             {'field_name': 'name', 'column': 0, 'type': 'text'},
+            {'field_name': 'location', 'column': 1, 'type': 'term'},
+            {'field_name': 'province', 'column': 2, 'type': 'term'},
             # value
-            {'field_name': 'followers_count', 'column': 1, 'type': 'long'},
-            {'field_name': 'statuses_count', 'column': 2, 'type': 'long'},
-            {'field_name': 'friends_count', 'column': 3, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 4, 'type': 'long'},
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
+            {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
+            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
         ],
     }
 
