@@ -465,7 +465,7 @@ def _index_field(field, document, item, schema_version, schema):
             document.add_term(prefix + term)
         # 可选value
         elif field['field_name'] in ['created_at']:
-            value = _marshal_value(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else 0
+            value = _marshal_value(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else '0'
             document.add_value(field['column'], value)
         # 必选value
         elif field['field_name'] in ['_id', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count']:
