@@ -73,41 +73,43 @@ class XapianIndex(object):
 
     #@profile
 
-    def load_weibos(self, start_time=None, mode='debug'):
+    def load_items(self, start_time=None, mode='debug'):
         if mode == 'idx_all':
-            weibos = getattr(self.mgdb, self.collection).find(timeout=False)
-            print 'prod mode: 从mongodb加载[%s]里的所有微博' % self.collection
+            items = getattr(self.mgdb, self.collection).find(timeout=False)
+            print 'prod mode: 从mongodb加载[%s]里的所有数据' % self.collection
         elif mode == 'single_given_db':
             if not start_time:
                 raise Exception('single_given_db mode 需要指定start_time')
             start_time = self.ts_and_dbfolders[0][0]
             end_time = start_time + datetime.timedelta(days=50).total_seconds()
-            weibos = getattr(self.mgdb, self.collection).find({
+            items = getattr(self.mgdb, self.collection).find({
                 self.schema['posted_at_key']: {
                     '$gte': start_time,
                     '$lt': end_time
                 }
             }, timeout=False)
-            print 'prod mode: 从mongodb加载[%s:%s]里的从%s开始50天的微博' % (self.mgdb, self.collection, datetime.datetime.fromtimestamp(start_time))
+            print 'prod mode: 从mongodb加载[%s:%s]里的从%s开始50天的数据' % (self.mgdb, self.collection, datetime.datetime.fromtimestamp(start_time))
         elif mode == 'debug':
             with open("../test/sample_tweets.js") as f:
-                weibos = json.loads(f.readline())
-            print 'debug mode: 从测试数据文件中加载微博'
+                items = json.loads(f.readline())
+            print 'debug mode: 从测试数据文件中加载数据'
 
-        self.weibos = weibos
+        return items
 
     @timeit
-    def index_weibos(self, start_time=None, mode='debug'):
+    def index_items(self, start_time=None, mode='debug'):
         count = 0
         try:
-            for weibo in self.weibos:
+            for item in self.load_items(start_time=start_time, mode=mode):
                 count += 1
                 if mode == 'single_given_db':
                     if not start_time:
                         raise Exception('single_given_db mode 需要指定start_time')
                     folder = self.ts_and_dbfolders[0][1]
                 else:
-                    posted_at = weibo[self.schema['posted_at_key']]
+                    if 'posted_at_key' not in self.schema:
+                        raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
+                    posted_at = item[self.schema['posted_at_key']]
                     for i in xrange(len(self.ts_and_dbfolders) - 1):
                         if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
                             folder = self.ts_and_dbfolders[i][1]
@@ -116,7 +118,7 @@ class XapianIndex(object):
                         if posted_at >= self.ts_and_dbfolders[i + 1][0]:
                             folder = self.ts_and_dbfolders[i + 1][1]
 
-                self.update(folder, weibo)
+                self.update(folder, item)
                 if count % PROCESS_IDX_SIZE == 0:
                     print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
         except Exception:
@@ -129,28 +131,28 @@ class XapianIndex(object):
             for _, folder in self.ts_and_dbfolders:
                 print '[', folder, ']', 'total size', self.document_count(folder)
 
-    def update(self, folder, weibo):
+    def update(self, folder, item):
         document = xapian.Document()
-        document_id = DOCUMENT_ID_TERM_PREFIX + str(weibo[self.schema['obj_id']])
+        document_id = DOCUMENT_ID_TERM_PREFIX + str(item[self.schema['obj_id']])
         for field in self.schema['idx_fields']:
-            self.index_field(field, document, weibo, SCHEMA_VERSION)
+            self.index_field(field, document, item, SCHEMA_VERSION)
         if 'dumps_exclude' in self.schema:
             for k in self.schema['dumps_exclude']:
-                if k in weibo:
-                    del weibo[k]
+                if k in item:
+                    del item[k]
 
         if 'pre' in self.schema:
             for k in self.schema['pre']:
-                if k in weibo:
-                    weibo[k] = self.schema['pre'][k](weibo[k])
+                if k in item:
+                    item[k] = self.schema['pre'][k](item[k])
 
-        document.set_data(msgpack.packb(weibo))
+        document.set_data(msgpack.packb(item))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
         #self.get_database(folder).add_document(document)
 
-    def index_field(self, field, document, weibo, schema_version):
-        _index_field(field, document, weibo, schema_version, self.schema)
+    def index_field(self, field, document, item, schema_version):
+        _index_field(field, document, item, schema_version, self.schema)
 
 
 class XapianSearch(object):
@@ -553,5 +555,4 @@ if __name__ == '__main__':
         print 'idx all collection to multi db mode'
         mode = 'idx_all'
 
-    xapian_indexer.load_weibos(start_time, mode)
     xapian_indexer.index_weibos(start_time, mode)
