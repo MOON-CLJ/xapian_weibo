@@ -167,7 +167,7 @@ class XapianSearch(object):
 
         self.database = reduce(merge,
                                map(create,
-                                   [path + p for p in os.listdir(path) if p.startswith('_%s' % name)]))
+                                   [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(Schema, 'v%s' % schema_version)
 
