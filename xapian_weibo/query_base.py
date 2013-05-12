@@ -169,12 +169,12 @@ class QueryCompilerVisitor(QNodeVisitor):
         field_type = {}
         field_col = {}
 
-        field_prefix[self.schema['obj_id']] = DOCUMENT_ID_TERM_PREFIX
         for field_dict in self.schema['idx_fields']:
             fname = field_dict['field_name']
             field_col[fname] = field_dict['column']
             field_type[fname] = field_dict['type']
             field_prefix[fname] = DOCUMENT_CUSTOM_TERM_PREFIX + fname.upper()
+        field_prefix[self.schema['obj_id']] = DOCUMENT_ID_TERM_PREFIX
         pre_query = None
         new_query = None
         for field in query_dict:
