@@ -7,6 +7,7 @@ from utils import load_scws, cut
 from utils4scrapy.tk_maintain import _default_mongo
 from utils4scrapy.utils import local2unix
 from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError, OperationError
+from xapian_backend import XapianSearch as XapianSearchWeibo
 import os
 import sys
 import xapian
@@ -417,6 +418,8 @@ def _load_weibos_from_xapian(total_days=90, fields=['_id', 'retweeted_status', '
     query_dict = {
         'timestamp': {'$gt': begin_ts, '$lt': end_ts},
     }
+    s = XapianSearchWeibo(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
+
     count, get_results = s.search(query=query_dict, fields=fields)
     print count
     return get_results
