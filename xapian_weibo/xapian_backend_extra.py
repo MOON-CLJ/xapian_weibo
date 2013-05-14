@@ -21,6 +21,8 @@ DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
 s = load_scws()
+weibo_multi_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_multi_sentiment'),
+                                               block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
 
 class XapianIndex(object):
