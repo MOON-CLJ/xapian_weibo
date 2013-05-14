@@ -94,6 +94,7 @@ class XapianIndex(object):
         for field in self.schema['idx_fields']:
             self.index_field(field, document, item, SCHEMA_VERSION)
 
+        document.set_data(msgpack.packb({}))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
         #self.get_database(folder).add_document(document)
@@ -168,5 +169,5 @@ if __name__ == '__main__':
     dbpath = args.dbpath
 
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=debug)
-    xapian_indexer.generate(None)
+    xapian_indexer.generate()
     xapian_indexer.index_weibos()
