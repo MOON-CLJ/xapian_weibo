@@ -3,12 +3,12 @@
 
 from argparse import ArgumentParser
 from query_base import Q, notQ
-from utils import load_scws, cut
 from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError, OperationError
 from xapian_backend import XapianSearch as XapianSearchWeibo
 import os
 import sys
 import xapian
+import leveldb
 import msgpack
 import datetime
 import calendar
@@ -16,11 +16,11 @@ import time
 
 
 PROCESS_IDX_SIZE = 20000
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 1
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
-s = load_scws()
+LEVELDBPATH = '/home/mirage/leveldb'
 weibo_multi_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_multi_sentiment'),
                                                block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
@@ -102,234 +102,17 @@ class XapianIndex(object):
         _index_field(field, document, item, schema_version, self.schema)
 
 
-class XapianSearch(object):
-    def __init__(self, path, name='master_timeline_weibo', schema_version=SCHEMA_VERSION):
-        def create(dbpath):
-            return xapian.Database(dbpath)
-
-        def merge(db1, db2):
-            db1.add_database(db2)
-            return db1
-
-        self.database = reduce(merge,
-                               map(create,
-                                   [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
-
-        self.schema = getattr(Schema, 'v%s' % schema_version)
-
-    def parse_query(self, query_dict):
-        """
-        Given a `query_dict`, will attempt to return a xapian.Query
-
-        Required arguments:
-            ``query_dict`` -- A query dict similar to MongoDB style to parse
-
-        Returns a xapian.Query
-
-        Operator Reference:
-            Comparison:
-            equal, key = value, { key:value }
-
-            $lt, $gt, the field less or more than the specified value, { field: { $lt: value, $gt: value } }
-
-            Logical:
-            $and, perform logical AND operation in expressions,  { $and: [{ <expression1> } , { <expression2> },
-                                                                            ... , { <expressionN> }] }
-
-            $or, perform logical OR operation in expressions like the $and operation
-
-            $xor, perform logical XOR operation in expressions like the $and operation
-
-            $not, perform logical NOT operation in experssions, which get the conjunction of both negative
-                  experssions, { $not: { <expression1> }, { <expression2> }, ...  { <expressionN> } }
-
-            PS: if not any operation is specified, the logical AND operation is the default operation
-            (An implicit AND operation is performed when specifying a comma separated list of expressions).
-                See more query examples in test files.
-        """
-        if query_dict is None:
-            return xapian.Query('')  # Match everything
-        elif query_dict == {}:
-            return xapian.Query()  # Match nothing
-
-        query_tree = self.build_query_tree(query_dict)
-
-        return query_tree.to_query(self.schema, self.database)
-
-    def build_query_tree(self, query_dict):
-        """将字典转成语法树"""
-        ops = ['$not']
-        bi_ops = ['$or', '$and', '$xor']
-
-        def op(a, b, operation):
-            if operation == '$and':
-                return a & b
-            elif operation == '$or':
-                return a | b
-            elif operation == '$xor':
-                return a ^ b
-            else:
-                raise OperationError('Operation %s cannot be processed.' % operation)
-
-        def grammar_tree(query_dict):
-            total_query = Q()
-            for k in query_dict.keys():
-                if k in bi_ops:
-                    #deal with expression without operator
-                    bi_query = reduce(lambda a, b: op(a, b, k),
-                                      map(lambda expr: Q(**expr),
-                                          filter(lambda expr: not (set(expr.keys()) & set(ops + bi_ops)), query_dict[k])), Q())
-                    #deal with nested expression
-                    nested_query = reduce(lambda a, b: op(a, b, k),
-                                          map(lambda nested_query_dict: grammar_tree(nested_query_dict),
-                                              filter(lambda expr: set(expr.keys()) & set(ops + bi_ops), query_dict[k])), Q())
-                    if nested_query:
-                        total_query &= op(bi_query, nested_query, k)
-                    else:
-                        total_query &= bi_query
-
-                elif k in ops:
-                    if k == '$not':
-                        not_dict = {}
-                        #nested_query_dict = {}
-                        for not_k in query_dict[k]:
-                            if not_k not in ops + bi_ops:
-                                not_dict[not_k] = query_dict[k][not_k]
-                            else:
-                                pass
-                                #nested query in a $not statement is not implemented
-                                #nested_query_dict.update({not_k: query_dict[k][not_k]})
-                        not_query = notQ(**not_dict)
-                        total_query &= not_query
-
-                else:
-                    total_query &= Q(**{k: query_dict[k]})
-            return total_query
-
-        total_query = grammar_tree(query_dict)
-
-        return total_query
-
-    def search(self, query=None, sort_by=None, start_offset=0,
-               max_offset=None, fields=None, **kwargs):
-
-        query = self.parse_query(query)
-
-        if xapian.Query.empty(query):
-            return 0, lambda: []
-
-        database = self.database
-        enquire = xapian.Enquire(database)
-        enquire.set_query(query)
-        if 'collapse_valueno' in self.schema:
-            enquire.set_collapse_key(self.schema['collapse_valueno'])
-
-        if sort_by:
-            sorter = xapian.MultiValueSorter()
-
-            for sort_field in sort_by:
-                if sort_field.startswith('-'):
-                    reverse = True
-                    sort_field = sort_field[1:]  # Strip the '-'
-                else:
-                    reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
-                sorter.add(self._value_column(sort_field), reverse)
-
-            enquire.set_sort_by_key(sorter, True)
-
-        if not max_offset:
-            max_offset = database.get_doccount() - start_offset
-
-        matches = self._get_enquire_mset(database, enquire, start_offset, max_offset)
-
-        def result_generator():
-            for match in matches:
-                r = msgpack.unpackb(self._get_document_data(database, match.document))
-                if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
-                    item = {}
-                    if isinstance(fields, list):
-                        for field in fields:
-                            if field == 'terms':
-                                item['terms'] = dict([(term.term[5:], term.wdf) for term in match.document.termlist() if term.term.startswith('XTEXT')])
-                            else:
-                                item[field] = r.get(field)
-                else:
-                    item = r
-                yield item
-
-        return self._get_hit_count(database, enquire), result_generator
-
-    def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
-        """
-        A safer version of Xapian.enquire.get_mset
-
-        Simply wraps the Xapian version and catches any `Xapian.DatabaseModifiedError`,
-        attempting a `database.reopen` as needed.
-
-        Required arguments:
-            `database` -- The database to be read
-            `enquire` -- An instance of an Xapian.enquire object
-            `start_offset` -- The start offset to pass to `enquire.get_mset`
-            `max_offset` -- The max offset (maxitems to acquire) to pass to `enquire.get_mset`
-        """
-        try:
-            return enquire.get_mset(start_offset, max_offset)
-        except xapian.DatabaseModifiedError:
-            database.reopen()
-            return enquire.get_mset(start_offset, max_offset)
-
-    def _get_document_data(self, database, document):
-        """
-        A safer version of Xapian.document.get_data
-
-        Simply wraps the Xapian version and catches any `Xapian.DatabaseModifiedError`,
-        attempting a `database.reopen` as needed.
-
-        Required arguments:
-            `database` -- The database to be read
-            `document` -- An instance of an Xapian.document object
-        """
-        try:
-            return document.get_data()
-        except xapian.DatabaseModifiedError:
-            database.reopen()
-            return document.get_data()
-
-    def _value_column(self, field):
-        """
-        Private method that returns the column value slot in the database
-        for a given field.
-
-        Required arguemnts:
-            `field` -- The field to lookup
-
-        Returns an integer with the column location (0 indexed).
-        """
-        for field_dict in self.schema['idx_fields']:
-            if field_dict['field_name'] == field:
-                return field_dict['column']
-        raise ValueError('Field %s cannot be used in sort_by clause' % field)
-
-    def _get_hit_count(self, database, enquire):
-        """
-        Given a database and enquire instance, returns the estimated number
-        of matches.
-
-        Required arguments:
-            `database` -- The database to be queried
-            `enquire` -- The enquire instance
-        """
-        return self._get_enquire_mset(
-            database, enquire, 0, database.get_doccount()
-        ).size()
-
-
 def _index_field(field, document, item, schema_version, schema):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
     if schema_version == 1:
         # 必选term
         if field['field_name'] in ['user']:
             term = _marshal_term(item[field['field_name']])
+            document.add_term(prefix + term)
+        elif field['field_name'] == 'sentiment':
+            sentiment = weibo_multi_sentiment_bucket.get(str(item[self.schema['obj_id']]))
+            sentiment = int(sentiment)
+            term = _marshal_term(sentiment)
             document.add_term(prefix + term)
         # value
         elif field['field_name'] in ['_id', 'timestamp']:
@@ -339,8 +122,6 @@ def _index_field(field, document, item, schema_version, schema):
             termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-        elif field['field_name'] == 'sentiment':
-            pass
 
 
 @timeit

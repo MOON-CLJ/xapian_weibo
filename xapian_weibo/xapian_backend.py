@@ -36,6 +36,57 @@ def timeit(method):
     return timed
 
 
+class Schema:
+    v2 = {
+        'db': 'master_timeline',
+        'collection': 'master_timeline_weibo',
+        'dumps_exclude': ['id', 'mid', 'created_at', 'original_pic', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'reposts', 'comments', 'first_in', 'last_modify'],
+        'pre': {
+            'retweeted_status': lambda x: x['id'],
+            'user': lambda x: x['id']
+        },
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'posted_at_key': 'timestamp',
+        'idx_fields': [
+            # term
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
+            {'field_name': 'text', 'column': 2, 'type': 'text'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
+        ],
+    }
+
+    v1 = {
+        'db': 'master_timeline',
+        'collection': 'master_timeline_user',
+        'dumps_exclude': ['id', 'first_in', 'last_modify'],
+        'pre': {
+            'created_at': lambda x: local2unix(x)
+        },
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'name', 'column': 0, 'type': 'term'},
+            {'field_name': 'location', 'column': 1, 'type': 'term'},
+            {'field_name': 'province', 'column': 2, 'type': 'term'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
+            {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
+            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
+        ],
+    }
+
+
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version, refresh_db=False):
         self.path = dbpath
@@ -157,7 +208,7 @@ class XapianIndex(object):
 
 
 class XapianSearch(object):
-    def __init__(self, path, name='master_timeline_weibo', schema_version=SCHEMA_VERSION):
+    def __init__(self, path, name='master_timeline_weibo', schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return xapian.Database(dbpath)
 
@@ -169,7 +220,7 @@ class XapianSearch(object):
                                map(create,
                                    [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
-        self.schema = getattr(Schema, 'v%s' % schema_version)
+        self.schema = getattr(schema, 'v%s' % schema_version)
 
     def parse_query(self, query_dict):
         """
@@ -480,57 +531,6 @@ class InvalidIndexError(Exception):
 class OperationError(Exception):
     """Raised when queries cannot be operated."""
     pass
-
-
-class Schema:
-    v2 = {
-        'db': 'master_timeline',
-        'collection': 'master_timeline_weibo',
-        'dumps_exclude': ['id', 'mid', 'created_at', 'original_pic', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'reposts', 'comments', 'first_in', 'last_modify'],
-        'pre': {
-            'retweeted_status': lambda x: x['id'],
-            'user': lambda x: x['id']
-        },
-        'obj_id': '_id',
-        # 用于去重的value no(column)
-        'collapse_valueno': 3,
-        'posted_at_key': 'timestamp',
-        'idx_fields': [
-            # term
-            {'field_name': 'user', 'column': 0, 'type': 'long'},
-            {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
-            {'field_name': 'text', 'column': 2, 'type': 'text'},
-            # value
-            {'field_name': '_id', 'column': 3, 'type': 'long'},
-            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
-            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
-        ],
-    }
-
-    v1 = {
-        'db': 'master_timeline',
-        'collection': 'master_timeline_user',
-        'dumps_exclude': ['id', 'first_in', 'last_modify'],
-        'pre': {
-            'created_at': lambda x: local2unix(x)
-        },
-        'obj_id': '_id',
-        # 用于去重的value no(column)
-        'collapse_valueno': 3,
-        'idx_fields': [
-            # term
-            {'field_name': 'name', 'column': 0, 'type': 'term'},
-            {'field_name': 'location', 'column': 1, 'type': 'term'},
-            {'field_name': 'province', 'column': 2, 'type': 'term'},
-            # value
-            {'field_name': '_id', 'column': 3, 'type': 'long'},
-            {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
-            {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
-            {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
-            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
-        ],
-    }
 
 if __name__ == '__main__':
     """
