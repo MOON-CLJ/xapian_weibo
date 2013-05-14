@@ -4,14 +4,11 @@
 from argparse import ArgumentParser
 from query_base import Q, notQ
 from utils import load_scws, cut
-from utils4scrapy.tk_maintain import _default_mongo
-from utils4scrapy.utils import local2unix
 from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError, OperationError
 from xapian_backend import XapianSearch as XapianSearchWeibo
 import os
 import sys
 import xapian
-import simplejson as json
 import msgpack
 import datetime
 import calendar
@@ -22,8 +19,6 @@ PROCESS_IDX_SIZE = 20000
 SCHEMA_VERSION = 2
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
-MONGOD_HOST = 'localhost'
-MONGOD_PORT = 27017
 
 s = load_scws()
 
@@ -36,9 +31,6 @@ class XapianIndex(object):
 
         self.databases = {}
         self.ts_and_dbfolders = []
-
-        self.mgdb = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=self.schema['db'])
-        self.collection = self.schema['collection']
 
     def document_count(self, folder):
         try:
@@ -64,52 +56,22 @@ class XapianIndex(object):
             self.databases[folder] = _database(folder, writable=writable, refresh=self.refresh_db)
         return self.databases[folder]
 
-    #@profile
-
-    def load_items(self, start_time=None, mode='debug'):
-        if mode == 'idx_all':
-            items = getattr(self.mgdb, self.collection).find(timeout=False)
-            print 'prod mode: 从mongodb加载[%s]里的所有数据' % self.collection
-        elif mode == 'single_given_db':
-            if not start_time:
-                raise Exception('single_given_db mode 需要指定start_time')
-            start_time = self.ts_and_dbfolders[0][0]
-            end_time = start_time + datetime.timedelta(days=50).total_seconds()
-            items = getattr(self.mgdb, self.collection).find({
-                self.schema['posted_at_key']: {
-                    '$gte': start_time,
-                    '$lt': end_time
-                }
-            }, timeout=False)
-            print 'prod mode: 从mongodb加载[%s:%s]里的从%s开始50天的数据' % (self.mgdb, self.collection, datetime.datetime.fromtimestamp(start_time))
-        elif mode == 'debug':
-            with open("../test/sample_tweets.js") as f:
-                items = json.loads(f.readline())
-            print 'debug mode: 从测试数据文件中加载数据'
-
-        return items
-
     @timeit
-    def index_items(self, start_time=None, mode='debug'):
+    def index_items(self):
         count = 0
         try:
-            for item in self.load_items(start_time=start_time, mode=mode):
+            for item in _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp']):
                 count += 1
-                if mode == 'single_given_db':
-                    if not start_time:
-                        raise Exception('single_given_db mode 需要指定start_time')
-                    folder = self.ts_and_dbfolders[0][1]
+                if 'posted_at_key' not in self.schema:
+                    raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
+                posted_at = item[self.schema['posted_at_key']]
+                for i in xrange(len(self.ts_and_dbfolders) - 1):
+                    if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
+                        folder = self.ts_and_dbfolders[i][1]
+                        break
                 else:
-                    if 'posted_at_key' not in self.schema:
-                        raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
-                    posted_at = item[self.schema['posted_at_key']]
-                    for i in xrange(len(self.ts_and_dbfolders) - 1):
-                        if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
-                            folder = self.ts_and_dbfolders[i][1]
-                            break
-                    else:
-                        if posted_at >= self.ts_and_dbfolders[i + 1][0]:
-                            folder = self.ts_and_dbfolders[i + 1][1]
+                    if posted_at >= self.ts_and_dbfolders[i + 1][0]:
+                        folder = self.ts_and_dbfolders[i + 1][1]
 
                 self.update(folder, item)
                 if count % PROCESS_IDX_SIZE == 0:
@@ -129,17 +91,7 @@ class XapianIndex(object):
         document_id = DOCUMENT_ID_TERM_PREFIX + str(item[self.schema['obj_id']])
         for field in self.schema['idx_fields']:
             self.index_field(field, document, item, SCHEMA_VERSION)
-        if 'dumps_exclude' in self.schema:
-            for k in self.schema['dumps_exclude']:
-                if k in item:
-                    del item[k]
 
-        if 'pre' in self.schema:
-            for k in self.schema['pre']:
-                if k in item:
-                    item[k] = self.schema['pre'][k](item[k])
-
-        document.set_data(msgpack.packb(item))
         document.add_term(document_id)
         self.get_database(folder).replace_document(document_id, document)
         #self.get_database(folder).add_document(document)
@@ -372,40 +324,21 @@ class XapianSearch(object):
 
 def _index_field(field, document, item, schema_version, schema):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-    if schema_version == 2:
-        # 可选term存为0
-        if field['field_name'] in ['retweeted_status']:
-            term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else '0'
-            document.add_term(prefix + term)
+    if schema_version == 1:
         # 必选term
-        elif field['field_name'] in ['user']:
-            term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']])
+        if field['field_name'] in ['user']:
+            term = _marshal_term(item[field['field_name']])
             document.add_term(prefix + term)
         # value
-        elif field['field_name'] in ['_id', 'timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
+        elif field['field_name'] in ['_id', 'timestamp']:
             document.add_value(field['column'], _marshal_value(item[field['field_name']]))
         elif field['field_name'] == 'text':
-            tokens = cut(s, item[field['field_name']].encode('utf-8'))
+            tokens = item['terms']
             termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-            """
-            for token, count in Counter(tokens).iteritems():
-                document.add_term(prefix + token, count)
-            """
-
-    elif schema_version == 1:
-        # 必选term
-        if field['field_name'] in ['name', 'location', 'province']:
-            term = _marshal_term(item[field['field_name']])
-            document.add_term(prefix + term)
-        # 可选value
-        elif field['field_name'] in ['created_at']:
-            value = _marshal_value(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else '0'
-            document.add_value(field['column'], value)
-        # 必选value
-        elif field['field_name'] in ['_id', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count']:
-            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
+        elif field['field_name'] == 'sentiment':
+            pass
 
 
 @timeit
@@ -426,14 +359,7 @@ def _load_weibos_from_xapian(total_days=90, fields=['_id', 'retweeted_status', '
 
 
 class Schema:
-    v2 = {
-        'db': 'master_timeline',
-        'collection': 'master_timeline_weibo',
-        'dumps_exclude': ['id', 'mid', 'created_at', 'original_pic', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'reposts', 'comments', 'first_in', 'last_modify'],
-        'pre': {
-            'retweeted_status': lambda x: x['id'],
-            'user': lambda x: x['id']
-        },
+    v1 = {
         'obj_id': '_id',
         # 用于去重的value no(column)
         'collapse_valueno': 3,
@@ -441,72 +367,23 @@ class Schema:
         'idx_fields': [
             # term
             {'field_name': 'user', 'column': 0, 'type': 'long'},
-            {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
-            {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'text', 'column': 1, 'type': 'text'},
+            # extra term
+            {'field_name': 'sentiment', 'column': 2, 'type': 'int'},
             # value
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
-            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
         ],
     }
 
-    v1 = {
-        'db': 'master_timeline',
-        'collection': 'master_timeline_user',
-        'dumps_exclude': ['id', 'first_in', 'last_modify'],
-        'pre': {
-            'created_at': lambda x: local2unix(x)
-        },
-        'obj_id': '_id',
-        # 用于去重的value no(column)
-        'collapse_valueno': 3,
-        'idx_fields': [
-            # term
-            {'field_name': 'name', 'column': 0, 'type': 'term'},
-            {'field_name': 'location', 'column': 1, 'type': 'term'},
-            {'field_name': 'province', 'column': 2, 'type': 'term'},
-            # value
-            {'field_name': '_id', 'column': 3, 'type': 'long'},
-            {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
-            {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
-            {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
-            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
-        ],
-    }
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-d', '--debug', action='store_true', help='DEBUG')
-    parser.add_argument('-a', '--idx_all', action='store_true', help='INDEX WHOLE COLLECTION')
-    parser.add_argument('-p', '--print_folders', action='store_true', help='PRINT FOLDER THEN EXIT')
-    parser.add_argument('-s', '--start_time', nargs=1, help='DATETIME')
     parser.add_argument('dbpath', help='PATH_TO_DATABASE')
 
     args = parser.parse_args(sys.argv[1:])
-    debug = args.debug
-    idx_all = args.idx_all
-    start_time = args.start_time[0] if args.start_time else None
     dbpath = args.dbpath
 
-    if args.print_folders:
-        xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
-        xapian_indexer.generate()
-        for _, folder in xapian_indexer.ts_and_dbfolders:
-            print folder
-
-        sys.exit(0)
-
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=debug)
-    xapian_indexer.generate(start_time)
-    if debug:
-        print 'debug mode'
-        mode = 'debug'
-    elif start_time:
-        print 'single given db mode'
-        mode = 'single_given_db'
-    elif idx_all:
-        print 'idx all collection to multi db mode'
-        mode = 'idx_all'
-
-    xapian_indexer.index_weibos(start_time, mode)
+    xapian_indexer.generate(None)
+    xapian_indexer.index_weibos()
