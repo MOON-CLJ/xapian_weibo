@@ -407,6 +407,21 @@ def _index_field(field, document, item, schema_version, schema):
             document.add_value(field['column'], _marshal_value(item[field['field_name']]))
 
 
+@timeit
+def _load_weibos_from_xapian(total_days=90, fields=['_id', 'retweeted_status', 'text']):
+    total_days = 90
+    today = datetime.datetime.today()
+    end_ts = time.mktime(datetime.datetime(today.year, today.month, today.day, 2, 0).timetuple())
+    begin_ts = end_ts - total_days * 24 * 3600
+
+    query_dict = {
+        'timestamp': {'$gt': begin_ts, '$lt': end_ts},
+    }
+    count, get_results = s.search(query=query_dict, fields=fields)
+    print count
+    return get_results
+
+
 class Schema:
     v2 = {
         'db': 'master_timeline',
