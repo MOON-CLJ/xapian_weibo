@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-from query_base import Q, notQ
-from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError, OperationError
+from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError
 from xapian_backend import XapianSearch as XapianSearchWeibo
 import os
 import sys
@@ -111,7 +110,7 @@ def _index_field(field, document, item, schema_version, schema):
             term = _marshal_term(item[field['field_name']])
             document.add_term(prefix + term)
         elif field['field_name'] == 'sentiment':
-            sentiment = weibo_multi_sentiment_bucket.get(str(item[self.schema['obj_id']]))
+            sentiment = weibo_multi_sentiment_bucket.get(str(item[schema['obj_id']]))
             sentiment = int(sentiment)
             term = _marshal_term(sentiment)
             document.add_term(prefix + term)
@@ -168,6 +167,6 @@ if __name__ == '__main__':
     args = parser.parse_args(sys.argv[1:])
     dbpath = args.dbpath
 
-    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=debug)
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=False)
     xapian_indexer.generate()
     xapian_indexer.index_weibos()
