@@ -8,8 +8,8 @@ from xapian_weibo.xapian_backend import XapianSearch
 
 class BenchXapianGetByIds(hurdles.BenchCase):
     def setUp(self):
-        self.n = 100000
-        self.s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
+        self.n = 10000
+        self.s = XapianSearch(path='/home/arthas/dev/xapian_weibo/data/', name='master_timeline_weibo')
         self.weibo_ids = self._load_weibo_ids_from_xapian(self.n)
 
     def tearDown(self):
@@ -30,63 +30,55 @@ class BenchXapianGetByIds(hurdles.BenchCase):
 
         return ids
 
-    def bench_1_100000(self):
+    def bench_1(self):
         for _id in self.weibo_ids:
             query_dict = {'_id': _id}
             count, get_results = self.s.search(query=query_dict, fields=['_id', 'text'])
 
-    def bench_100000_1(self):
-        query_dict = {
-            '$or': [],
-        }
-        for _id in self.weibo_ids:
-            query_dict['$or'].append({'_id': _id})
-        count, get_results = self.s.search(query=query_dict, fields=['_id', 'text'])
-
-    def bench_10_10000(self):
+    def bench_10(self):
         size = 10
         for i in xrange(self.n / size):
             query_dict = {
                 '$or': [],
             }
 
-            for _id in self.weibo_ids[i * size, (i + 1) * size]:
+            for _id in self.weibo_ids[i * size: (i + 1) * size]:
                 query_dict['$or'].append({'_id': _id})
 
             count, get_results = self.s.search(query=query_dict, fields=['_id', 'text'])
 
-    def bench_100_1000(self):
-        size = 100
+    def bench_20(self):
+        size = 20
         for i in xrange(self.n / size):
             query_dict = {
                 '$or': [],
             }
 
-            for _id in self.weibo_ids[i * size, (i + 1) * size]:
+            for _id in self.weibo_ids[i * size: (i + 1) * size]:
                 query_dict['$or'].append({'_id': _id})
 
             count, get_results = self.s.search(query=query_dict, fields=['_id', 'text'])
 
-    def bench_1000_100(self):
-        size = 1000
+    def bench_30(self):
+        size = 30
         for i in xrange(self.n / size):
             query_dict = {
                 '$or': [],
             }
 
-            for _id in self.weibo_ids[i * size, (i + 1) * size]:
+            for _id in self.weibo_ids[i * size: (i + 1) * size]:
                 query_dict['$or'].append({'_id': _id})
 
             count, get_results = self.s.search(query=query_dict, fields=['_id', 'text'])
 
-    def bench_10000_10(self):
-        size = 10000
+    def bench_50(self):
+        size = 50
         for i in xrange(self.n / size):
             query_dict = {
                 '$or': [],
             }
 
-            for _id in self.weibo_ids[i * size, (i + 1) * size]:
+            for _id in self.weibo_ids[i * size: (i + 1) * size]:
                 query_dict['$or'].append({'_id': _id})
 
             count, get_results = self.s.search(query=query_dict, fields=['_id', 'text'])
