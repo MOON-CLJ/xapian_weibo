@@ -20,8 +20,6 @@ DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
 LEVELDBPATH = '/home/mirage/leveldb'
-weibo_multi_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_multi_sentiment'),
-                                               block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
 
 class XapianIndex(object):
@@ -32,6 +30,8 @@ class XapianIndex(object):
 
         self.databases = {}
         self.ts_and_dbfolders = []
+        self.weibo_multi_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_multi_sentiment'),
+                                                            block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
     def document_count(self, folder):
         try:
@@ -99,10 +99,10 @@ class XapianIndex(object):
         #self.get_database(folder).add_document(document)
 
     def index_field(self, field, document, item, schema_version):
-        _index_field(field, document, item, schema_version, self.schema)
+        _index_field(field, document, item, schema_version, self.schema, self.weibo_multi_sentiment_bucket)
 
 
-def _index_field(field, document, item, schema_version, schema):
+def _index_field(field, document, item, schema_version, schema, weibo_multi_sentiment_bucket):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
     if schema_version == 1:
         # 必选term
