@@ -210,4 +210,4 @@ if __name__ == '__main__':
 
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=False)
     xapian_indexer.generate()
-    xapian_indexer.index_weibos()
+    xapian_indexer.index_items()

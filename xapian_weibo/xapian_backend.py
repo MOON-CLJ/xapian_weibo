@@ -571,4 +571,4 @@ if __name__ == '__main__':
         print 'idx all collection to multi db mode'
         mode = 'idx_all'
 
-    xapian_indexer.index_weibos(start_time, mode)
+    xapian_indexer.index_items(start_time, mode)
