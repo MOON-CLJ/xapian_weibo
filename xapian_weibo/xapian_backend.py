@@ -150,8 +150,8 @@ class XapianIndex(object):
 
     @timeit
     def index_items(self, start_time=None, mode='debug'):
-        count = 0
         try:
+            count = 0
             for item in self.load_items(start_time=start_time, mode=mode):
                 count += 1
                 if mode == 'single_given_db':

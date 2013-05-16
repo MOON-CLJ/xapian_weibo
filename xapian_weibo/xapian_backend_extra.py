@@ -63,13 +63,14 @@ class XapianIndex(object):
 
     @timeit
     def index_items(self):
-        count = 0
         try:
             # 如果是情绪的只load最近90天的，否则load全部
             if SCHEMA_VERSION == 1:
                 get_results = _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp'])
             elif SCHEMA_VERSION == 2:
                 get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp'])
+
+            count = 0
             for item in get_results():
                 count += 1
                 if 'posted_at_key' not in self.schema:
