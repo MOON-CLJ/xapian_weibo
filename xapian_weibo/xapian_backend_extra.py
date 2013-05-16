@@ -124,7 +124,7 @@ class XapianIndex(object):
 
     def index_field(self, field, document, item, schema_version):
         if schema_version == 1:
-            _index_field(field, document, item, schema_version, self.schema, self.weibo_multi_sentiment_bucket)
+            _index_field(field, document, item, schema_version, self.schema, weibo_multi_sentiment_bucket=self.weibo_multi_sentiment_bucket)
         elif schema_version == 2:
             _index_field(field, document, item, schema_version, self.schema)
 
@@ -139,7 +139,7 @@ def _index_field(field, document, item, schema_version, schema, weibo_multi_sent
         term = _marshal_term(item[field['field_name']])
         document.add_term(prefix + term)
     elif field['field_name'] == 'sentiment':
-        sentiment = weibo_multi_sentiment_bucket.get(str(item[schema['obj_id']]))
+        sentiment = weibo_multi_sentiment_bucket.Get(str(item[schema['obj_id']]))
         sentiment = int(sentiment)
         term = _marshal_term(sentiment)
         document.add_term(prefix + term)
