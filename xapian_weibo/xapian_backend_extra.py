@@ -36,6 +36,7 @@ class XapianIndex(object):
                                                                 block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
         elif schema_version == 2:
             self.xapian_search_user = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_user')
+            self.xapian_search_weibo = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
 
     def document_count(self, folder):
         try:
@@ -68,7 +69,7 @@ class XapianIndex(object):
             if SCHEMA_VERSION == 1:
                 get_results = _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp'])
             elif SCHEMA_VERSION == 2:
-                get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp'])
+                get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp', 'retweeted_status'])
 
             count = 0
             for item in get_results():
@@ -120,6 +121,12 @@ class XapianIndex(object):
                 get_results = list(get_results())
                 if get_results:
                     reposted_user = get_results[0]['_id']
+            elif name is None and item['retweeted_status']:
+                _, get_results = self.xapian_search_weibo.search(query={'_id': item['retweeted_status']}, max_offset=1, fields=['user'])
+                get_results = list(get_results())
+                if get_results:
+                    reposted_user = get_results[0]['user']
+
             document.set_data(msgpack.packb({'reposted_user': reposted_user}))
 
     def index_field(self, field, document, item, schema_version):
