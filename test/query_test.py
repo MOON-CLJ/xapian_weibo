@@ -61,7 +61,6 @@ for r in get_results():
         print '** ' * 10
         print r
         break
-"""
 
 print 'query4:'
 begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
@@ -78,6 +77,17 @@ for r in get_results():
     uids.add(r['user'])
 
 print len(uids)
+"""
+
+print 'query5:'
+begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
+
+query_dict = {
+    'timestamp': {'$gt': begin_ts1, '$lt': begin_ts1 + 60},
+}
+count, get_results = s.search(query=query_dict, max_offset=1, fields=['terms'])
+print count
+print top_keywords(get_results, top=10)
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
 """

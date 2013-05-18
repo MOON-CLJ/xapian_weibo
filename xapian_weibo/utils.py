@@ -55,6 +55,16 @@ single_word_whitelist = set(load_one_words())
 single_word_whitelist |= set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
 
 
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print '%r %2.2f sec' % (method.__name__, te - ts)
+        return result
+    return timed
+
+
 class SimpleMapReduce(object):
     def __init__(self, map_func, reduce_func, num_workers=None):
         self.map_func = map_func
@@ -98,15 +108,14 @@ def not_low_freq_keywords(get_results, larger_than=3):
     return keywords_with_count
 
 
+@timeit
 def keywords(get_results):
     origin_data = []
     for r in get_results():
-        origin_data.extend(r['terms'].items())
+        origin_data.append(r['terms'].items())
 
-    print 'mapreduce begin: ', str(time.strftime("%H:%M:%S", time.gmtime()))
     mapper = SimpleMapReduce(addcount2keywords, count_words)
     keywords_with_count = mapper(origin_data)
-    print 'mapreduce end: ', str(time.strftime("%H:%M:%S", time.gmtime()))
 
     return keywords_with_count
 
