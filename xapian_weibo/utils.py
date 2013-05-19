@@ -88,6 +88,8 @@ class SimpleMapReduce(object):
         return partitioned_data.items()
 
     def __call__(self, inputs, chunksize=1):
+        if inputs == []:
+            return []
         self.pool = multiprocessing.Pool(self.num_workers, maxtasksperchild=10000)
         map_responses = self.pool.map(self.map_func, inputs, chunksize=chunksize)
         partitioned_data = self.partition(itertools.chain(*map_responses))
