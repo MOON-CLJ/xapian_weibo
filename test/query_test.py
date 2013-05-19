@@ -83,9 +83,9 @@ print 'query5:'
 begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
 
 query_dict = {
-    'timestamp': {'$gt': begin_ts1, '$lt': begin_ts1 + 60},
+    'timestamp': {'$gt': begin_ts1, '$lt': begin_ts1 + 3600},
 }
-count, get_results = s.search(query=query_dict, max_offset=1, fields=['terms'])
+count, get_results = s.search(query=query_dict, fields=['terms'])
 print count
 print top_keywords(get_results, top=10)
 

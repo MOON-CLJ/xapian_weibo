@@ -69,8 +69,7 @@ class SimpleMapReduce(object):
     def __init__(self, map_func, reduce_func, num_workers=None):
         self.map_func = map_func
         self.reduce_func = reduce_func
-        num_workers = multiprocessing.cpu_count() * 2
-        self.pool = multiprocessing.Pool(num_workers, maxtasksperchild=10000)
+        self.num_workers = multiprocessing.cpu_count() * 2
 
     def partition(self, mapped_values):
         """
@@ -89,9 +88,14 @@ class SimpleMapReduce(object):
         return partitioned_data.items()
 
     def __call__(self, inputs, chunksize=1):
+        self.pool = multiprocessing.Pool(self.num_workers, maxtasksperchild=10000)
         map_responses = self.pool.map(self.map_func, inputs, chunksize=chunksize)
         partitioned_data = self.partition(itertools.chain(*map_responses))
         reduced_values = self.pool.map(self.reduce_func, partitioned_data)
+        # recycle processes
+        self.pool.close()
+        self.pool.join()
+
         return reduced_values
 
 
