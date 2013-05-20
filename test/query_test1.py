@@ -5,7 +5,7 @@ import datetime
 
 from xapian_weibo.xapian_backend import XapianSearch
 
-s = XapianSearch(path='/home/arthas/dev/xapian_weibo/data/', name='master_timeline_user', schema_version=1)
+s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_user', schema_version=1)
 
 begin_ts = time.mktime(datetime.datetime(2011, 1, 1).timetuple())
 end_ts = time.mktime(datetime.datetime(2011, 12, 31).timetuple())
@@ -33,7 +33,7 @@ query_dict = {
     ]
 }
 """
-query_dict = {'_id': 1908252575}
+query_dict = {'name': u'一心浪就微博'}
 
 count, get_results = s.search(query=query_dict, fields=['_id', 'name'])
 
