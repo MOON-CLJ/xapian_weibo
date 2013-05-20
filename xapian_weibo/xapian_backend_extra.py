@@ -4,6 +4,8 @@
 from argparse import ArgumentParser
 from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError
 from xapian_backend import XapianSearch
+from utils import load_scws, cut
+from bs_input import KeyValueBSONInput
 import os
 import sys
 import re
@@ -20,6 +22,15 @@ DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
 LEVELDBPATH = '/home/mirage/leveldb'
+BSON_FILEPATH = "/opt/backup/mongodump/20130129/weibo/statuses.bson"
+
+s = load_scws()
+
+
+def load_items(bs_filepath=BSON_FILEPATH):
+    print 'bson file mode: 从备份的BSON文件中加载微博'
+    bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
+    return bs_input
 
 
 class XapianIndex(object):
@@ -67,27 +78,37 @@ class XapianIndex(object):
             # 如果是情绪的只load最近90天的，否则load全部
             if SCHEMA_VERSION == 1:
                 get_results = _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp'])
+                _iter = get_results()
             elif SCHEMA_VERSION == 2:
-                get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp', 'retweeted_status'])
+                bs_input = load_items()
+                _iter = bs_input.reads()
+                #get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp', 'retweeted_status'])
 
             count = 0
-            for item in get_results():
-                count += 1
-                if 'posted_at_key' not in self.schema:
-                    raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
-                posted_at = item[self.schema['posted_at_key']]
-                for i in xrange(len(self.ts_and_dbfolders) - 1):
-                    if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
-                        folder = self.ts_and_dbfolders[i][1]
-                        break
-                else:
-                    if posted_at >= self.ts_and_dbfolders[i + 1][0]:
-                        folder = self.ts_and_dbfolders[i + 1][1]
+            try:
+                while 1:
+                    if SCHEMA_VERSION == 1:
+                        item = next(_iter)
+                    elif SCHEMA_VERSION == 2:
+                        _, item = next(_iter)
 
-                self.update(folder, item)
-                if count % PROCESS_IDX_SIZE == 0:
-                    print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+                    count += 1
+                    if 'posted_at_key' not in self.schema:
+                        raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
+                    posted_at = item[self.schema['posted_at_key']]
+                    for i in xrange(len(self.ts_and_dbfolders) - 1):
+                        if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i][1]
+                            break
+                    else:
+                        if posted_at >= self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i + 1][1]
 
+                    self.update(folder, item)
+                    if count % PROCESS_IDX_SIZE == 0:
+                        print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+            except StopIteration:
+                pass
         except Exception:
             raise
 
@@ -121,8 +142,8 @@ class XapianIndex(object):
                 get_results = list(get_results())
                 if get_results:
                     reposted_user = get_results[0]['_id']
-            elif name is None and item['retweeted_status']:
-                _, get_results = self.xapian_search_weibo.search(query={'_id': item['retweeted_status']}, max_offset=1, fields=['user'])
+            elif name is None and 'retweeted_status' in item:
+                _, get_results = self.xapian_search_weibo.search(query={'_id': item['retweeted_status']['id']}, max_offset=1, fields=['user'])
                 get_results = list(get_results())
                 if get_results:
                     reposted_user = get_results[0]['user']
@@ -138,26 +159,37 @@ class XapianIndex(object):
 
 def _index_field(field, document, item, schema_version, schema, weibo_multi_sentiment_bucket=None):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-    # if schema_version == 1:
-    # 两种schema的检索条件兼容
-
-    # 必选term
-    if field['field_name'] in ['user']:
-        term = _marshal_term(item[field['field_name']])
-        document.add_term(prefix + term)
-    elif field['field_name'] == 'sentiment':
-        sentiment = weibo_multi_sentiment_bucket.Get(str(item[schema['obj_id']]))
-        sentiment = int(sentiment)
-        term = _marshal_term(sentiment)
-        document.add_term(prefix + term)
-    # value
-    elif field['field_name'] in ['_id', 'timestamp']:
-        document.add_value(field['column'], _marshal_value(item[field['field_name']]))
-    elif field['field_name'] == 'text':
-        tokens = item['terms']
-        termgen = xapian.TermGenerator()
-        termgen.set_document(document)
-        termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+    if schema_version == 1:
+        # 必选term
+        if field['field_name'] in ['user']:
+            term = _marshal_term(item[field['field_name']])
+            document.add_term(prefix + term)
+        elif field['field_name'] == 'sentiment':
+            sentiment = weibo_multi_sentiment_bucket.Get(str(item[schema['obj_id']]))
+            sentiment = int(sentiment)
+            term = _marshal_term(sentiment)
+            document.add_term(prefix + term)
+        # value
+        elif field['field_name'] in ['_id', 'timestamp']:
+            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
+        elif field['field_name'] == 'text':
+            tokens = item['terms']
+            termgen = xapian.TermGenerator()
+            termgen.set_document(document)
+            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+    elif schema_version == 2:
+        # 必选term
+        if field['field_name'] in ['user']:
+            term = _marshal_term(item[field['field_name']]['id'])
+            document.add_term(prefix + term)
+        # value
+        elif field['field_name'] in ['_id', 'timestamp']:
+            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
+        elif field['field_name'] == 'text':
+            tokens = cut(s, item[field['field_name']].encode('utf-8'))
+            termgen = xapian.TermGenerator()
+            termgen.set_document(document)
+            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 
 @timeit
