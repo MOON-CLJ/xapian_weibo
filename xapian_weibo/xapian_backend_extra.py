@@ -11,7 +11,6 @@ import xapian
 import leveldb
 import msgpack
 import datetime
-import calendar
 import time
 
 
@@ -48,13 +47,13 @@ class XapianIndex(object):
         if start_time:
             start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d')
             folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
-            self.ts_and_dbfolders.append((calendar.timegm(start_time.timetuple()), folder))
+            self.ts_and_dbfolders.append((time.mktime(start_time.timetuple()), folder))
         else:
             start_time = datetime.datetime(2009, 8, 1)
             step_time = datetime.timedelta(days=50)
             while start_time < datetime.datetime.today():
                 folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
-                self.ts_and_dbfolders.append((calendar.timegm(start_time.timetuple()), folder))
+                self.ts_and_dbfolders.append((time.mktime(start_time.timetuple()), folder))
                 start_time += step_time
 
     def get_database(self, folder, writable=True):
@@ -68,26 +67,56 @@ class XapianIndex(object):
             # 如果是情绪的只load最近90天的，否则load全部
             if SCHEMA_VERSION == 1:
                 get_results = _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp'])
+                count = 0
+                for item in get_results():
+                    count += 1
+                    if 'posted_at_key' not in self.schema:
+                        raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
+                    posted_at = item[self.schema['posted_at_key']]
+                    for i in xrange(len(self.ts_and_dbfolders) - 1):
+                        if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i][1]
+                            break
+                    else:
+                        if posted_at >= self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i + 1][1]
+
+                    self.update(folder, item)
+                    if count % PROCESS_IDX_SIZE == 0:
+                        print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+
             elif SCHEMA_VERSION == 2:
-                get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp', 'retweeted_status'])
+                start_time = datetime.datetime(2009, 8, 1)
+                step_time = datetime.timedelta(days=50)
+                count = 0
+                s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
 
-            count = 0
-            for item in get_results():
-                count += 1
-                if 'posted_at_key' not in self.schema:
-                    raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
-                posted_at = item[self.schema['posted_at_key']]
-                for i in xrange(len(self.ts_and_dbfolders) - 1):
-                    if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
-                        folder = self.ts_and_dbfolders[i][1]
-                        break
-                else:
-                    if posted_at >= self.ts_and_dbfolders[i + 1][0]:
-                        folder = self.ts_and_dbfolders[i + 1][1]
+                while start_time < datetime.datetime.today():
+                    begin_ts = time.mktime(start_time.timetuple())
+                    end_ts = time.mktime((start_time + step_time).timetuple())
+                    start_time += step_time
 
-                self.update(folder, item)
-                if count % PROCESS_IDX_SIZE == 0:
-                    print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+                    query_dict = {
+                        'timestamp': {'$gt': begin_ts, '$lt': end_ts},
+                    }
+                    _, get_results = s.search(query=query_dict, fields=['_id', 'user', 'text', 'terms', 'timestamp', 'retweeted_status'])
+                    for item in get_results():
+                        count += 1
+                        if 'posted_at_key' not in self.schema:
+                            raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
+                        posted_at = item[self.schema['posted_at_key']]
+                        for i in xrange(len(self.ts_and_dbfolders) - 1):
+                            if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
+                                folder = self.ts_and_dbfolders[i][1]
+                                break
+                        else:
+                            if posted_at >= self.ts_and_dbfolders[i + 1][0]:
+                                folder = self.ts_and_dbfolders[i + 1][1]
+
+                        self.update(folder, item)
+                        if count % PROCESS_IDX_SIZE == 0:
+                            print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+
         except Exception:
             raise
 
