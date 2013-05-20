@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from itertools import product
 import sys
-import copy
 import xapian
 
 
@@ -44,95 +42,6 @@ class QNodeVisitor(object):
         return query
 
 
-class SimplificationVisitor(QNodeVisitor):
-    """
-    Simplifies query trees by combinging unnecessary 'and' connection nodes
-    into a single Q-object.
-    """
-
-    def visit_combination(self, combination):
-        if combination.operation == combination.AND:
-            """
-            The simplification only applies to 'simple' queries
-            如果最外层的操作符是and，然后里面的每个元素都是一个独自的Q且不是not Q
-            将所有的Q的query抽出来，到一个query里面来
-            """
-            if all(isinstance(node, Q) and not isinstance(node, notQ)
-                   for node in combination.children):
-                queries = [node.query for node in combination.children]
-                return Q(**self._query_conjunction(queries))
-        return combination
-
-    def _query_conjunction(self, queries):
-        """
-        Merges query dicts - effectively &ing them together.
-        """
-        query_ops = set()
-        combined_query = {}
-        for query in queries:
-            ops = set(query.keys())
-            # Make sure that the same operation isn't applied more than once
-            # to a single field
-            intersection = ops & query_ops
-            if intersection:
-                msg = 'Duplicate query conditions: '
-                raise InvalidQueryError(msg + ', '.join(intersection))
-
-            query_ops.update(ops)
-            combined_query.update(copy.deepcopy(query))
-        return combined_query
-
-
-class QueryTreeTransformerVisitor(QNodeVisitor):
-    """
-    Transforms the query tree in to a form that may be more effective used with Xapian.
-    """
-
-    def visit_combination(self, combination):
-        if combination.operation == combination.AND:
-            # Move the ORs up the tree to one 'master' $or.
-
-            # Firstly, we must find all the necessary parts (part
-            # of an AND combination or just standard Q object), and store them
-            # separately from the OR parts.
-            or_groups = []
-            and_parts = []
-            for node in combination.children:
-                if isinstance(node, QCombination):
-                    if node.operation == node.OR:
-                        # Any of the children in an $or component may cause
-                        # the query to succeed
-                        or_groups.append(node.children)
-                    elif node.operation == node.AND:
-                        and_parts.append(node)
-                elif isinstance(node, Q):
-                    and_parts.append(node)
-
-            # Now we combine the parts into a usable query. AND together all of
-            # the necessary parts. Then for each $or part, create a new query
-            # that ANDs the necessary part with the $or part.
-            clauses = []
-            for or_group in product(*or_groups):
-                q_object = reduce(lambda a, b: a & b, and_parts, Q())
-                q_object = reduce(lambda a, b: a & b, or_group, q_object)
-                clauses.append(q_object)
-
-            # Finally, $or the generated clauses in to one query. Each of the
-            # clauses is sufficient for the query to succeed.
-            return reduce(lambda a, b: a | b, clauses, Q())
-
-        if combination.operation == combination.OR:
-            children = []
-            for node in combination.children:
-                if (isinstance(node, QCombination) and
-                        node.operation == combination.OR):
-                    children += node.children
-                else:
-                    children.append(node)
-            combination.children = children
-        return combination
-
-
 class QueryCompilerVisitor(QNodeVisitor):
     """
     Compiles the nodes in a query tree to a Xapian-compatible query.
@@ -144,7 +53,7 @@ class QueryCompilerVisitor(QNodeVisitor):
 
     def visit_combination(self, combination):
         if combination.operation == combination.OR:
-            return  xapian.Query(xapian.Query.OP_OR, combination.children)
+            return xapian.Query(xapian.Query.OP_OR, combination.children)
         elif combination.operation == combination.AND:
             return xapian.Query(xapian.Query.OP_AND, combination.children)
         elif combination.operation == combination.AND_NOT:
@@ -227,12 +136,6 @@ class QNode(object):
     NOT = 4
 
     def to_query(self, schema, database):
-        '''
-        The query optimization is a bit harder, so we just leave the optimization of query
-        to user's own judgement and come back to it in the future.
-        '''
-        #query = self.accept(SimplificationVisitor())
-        #query = query.accept(QueryTreeTransformerVisitor())
         query = self.accept(QueryCompilerVisitor(schema, database))
         return query
 
