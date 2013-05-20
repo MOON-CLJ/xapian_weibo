@@ -45,7 +45,7 @@ class XapianIndex(object):
             self.weibo_multi_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_multi_sentiment'),
                                                                 block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
         elif schema_version == 2:
-            self.xapian_search_user = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_user')
+            self.xapian_search_user = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_user', schema_version=1)
             self.xapian_search_weibo = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
 
     def document_count(self, folder):
