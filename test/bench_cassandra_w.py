@@ -82,18 +82,6 @@ class BenchCassandraW(hurdles.BenchCase):
                 }
             self.weibos_col_fam.batch_insert(weibos_data)
 
-    def bench_batch_insert_10000(self):
-        batch_size = 10000
-        for i in xrange(len(self.weibos) / batch_size):
-            weibos_data = {}
-            for weibo in self.weibos[i * batch_size: (i + 1) * batch_size]:
-                weibos_data[weibo['_id']] = {
-                    'text': weibo['text'],
-                    'timestamp': weibo['timestamp'],
-                    'reposts_count': weibo['reposts_count']
-                }
-            self.weibos_col_fam.batch_insert(weibos_data)
-
     """
     schema:
     create keyspace master_timeline
@@ -109,29 +97,57 @@ class BenchCassandraW(hurdles.BenchCase):
         {column_name : 'timestamp', validation_class : LongType},
         {column_name : 'text',validation_class : UTF8Type}];
 
+    1 node:
     hurdles bench_cassandra_w.py
     bson file mode: 从备份的BSON文件中加载微博
+    BenchCassandraW.bench_batch_insert
+     | average       922.751 ms
+     | median        917.325 ms
+     | fastest       527.56 ms
+     | slowest       1396.64 ms
+    bson file mode: 从备份的BSON文件中加载微博
     BenchCassandraW.bench_batch_insert_100
-     | average       12110.793 ms
-     | median        12031.805 ms
-     | fastest       11717.56 ms
-     | slowest       12872.64 ms
+     | average       1057.972 ms
+     | median        853.685 ms
+     | fastest       714.03 ms
+     | slowest       2828.66 ms
     bson file mode: 从备份的BSON文件中加载微博
     BenchCassandraW.bench_batch_insert_1000
-     | average       11013.973 ms
-     | median        11293.05 ms
-     | fastest       9748.5 ms
-     | slowest       12342.8 ms
-    bson file mode: 从备份的BSON文件中加载微博
-    BenchCassandraW.bench_batch_insert_10000
-     | average       11047.858 ms
-     | median        10829.465 ms
-     | fastest       10628.46 ms
-     | slowest       12941.17 ms
+     | average       856.124 ms
+     | median        861.965 ms
+     | fastest       792.65 ms
+     | slowest       873.46 ms
     bson file mode: 从备份的BSON文件中加载微博
     BenchCassandraW.bench_insert
-     | average       47498.512 ms
-     | median        47691.89 ms
-     | fastest       45528.44 ms
-     | slowest       48641.06 ms
+     | average       4721.272 ms
+     | median        4684.31 ms
+     | fastest       4518.87 ms
+     | slowest       4994.72 ms
+
+    2 node:
+    hurdles bench_cassandra_w.py
+    bson file mode: 从备份的BSON文件中加载微博
+    BenchCassandraW.bench_batch_insert
+     | average       1341.845 ms
+     | median        1087.74 ms
+     | fastest       853.52 ms
+     | slowest       4060.94 ms
+    bson file mode: 从备份的BSON文件中加载微博
+    BenchCassandraW.bench_batch_insert_100
+     | average       1384.371 ms
+     | median        1280.365 ms
+     | fastest       1047.3 ms
+     | slowest       2311.91 ms
+    bson file mode: 从备份的BSON文件中加载微博
+    BenchCassandraW.bench_batch_insert_1000
+     | average       1140.565 ms
+     | median        1153.18 ms
+     | fastest       1030.62 ms
+     | slowest       1174.49 ms
+    bson file mode: 从备份的BSON文件中加载微博
+    BenchCassandraW.bench_insert
+     | average       8558.226 ms
+     | median        8501.005 ms
+     | fastest       8270.73 ms
+     | slowest       9316.03 ms
     """
