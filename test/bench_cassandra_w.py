@@ -19,9 +19,9 @@ def load_items(bs_filepath=BSON_FILEPATH):
 
 class BenchCassandraW(hurdles.BenchCase):
     def setUp(self):
-        n = 100000
+        n = 10000
         self.weibos = self._load_items(n)
-        pool = ConnectionPool('master_timeline')
+        pool = ConnectionPool('master_timeline', server_list=['219.224.135.60:9160', '219.224.135.61:9160'], pool_size=10)
         col_fam = pycassa.ColumnFamily(pool, 'weibos')
         self.weibos_col_fam = col_fam
 
@@ -47,6 +47,16 @@ class BenchCassandraW(hurdles.BenchCase):
                 'timestamp': weibo['timestamp'],
                 'reposts_count': weibo['reposts_count']
             })
+
+    def bench_batch_insert(self):
+        weibos_data = {}
+        for weibo in self.weibos:
+            weibos_data[weibo['_id']] = {
+                'text': weibo['text'],
+                'timestamp': weibo['timestamp'],
+                'reposts_count': weibo['reposts_count']
+            }
+        self.weibos_col_fam.batch_insert(weibos_data)
 
     def bench_batch_insert_100(self):
         batch_size = 100
@@ -85,6 +95,20 @@ class BenchCassandraW(hurdles.BenchCase):
             self.weibos_col_fam.batch_insert(weibos_data)
 
     """
+    schema:
+    create keyspace master_timeline
+    with placement_strategy = 'SimpleStrategy'
+    and strategy_options = {replication_factor : 1};
+
+    create column family weibos
+      with comparator = 'UTF8Type'
+      and default_validation_class = 'UTF8Type'
+      and key_validation_class = 'LongType'
+      and column_metadata = [
+        {column_name : 'reposts_count', validation_class : Int32Type},
+        {column_name : 'timestamp', validation_class : LongType},
+        {column_name : 'text',validation_class : UTF8Type}];
+
     hurdles bench_cassandra_w.py
     bson file mode: 从备份的BSON文件中加载微博
     BenchCassandraW.bench_batch_insert_100
