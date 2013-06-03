@@ -29,7 +29,7 @@ class OriginData2Bdb(object):
         self.db_env = db.DBEnv()
         self.db_env.set_tmp_dir(db_tmp_path)
         self.db_env.set_lg_dir(db_log_path)
-        self.db_env.set_cachesize(0, 8 * (2 << 27), 1)
+        self.db_env.set_cachesize(0, 8 * (2 << 26), 1)
         try:
             self.db_env.open(db_data_path, db.DB_INIT_CDB | db.DB_INIT_MPOOL | db.DB_CREATE)
         except db.DBNoSuchFileError:
