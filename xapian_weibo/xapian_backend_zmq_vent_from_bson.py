@@ -5,7 +5,7 @@ from bs_input import KeyValueBSONInput
 import time
 import zmq
 
-BSON_FILEPATH = "/opt/backup/mongodump/20130129/weibo/statuses.bson"
+BSON_FILEPATH = "/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson"
 
 
 def load_items(bs_filepath=BSON_FILEPATH):

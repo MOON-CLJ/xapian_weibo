@@ -14,7 +14,7 @@ import time
 import datetime
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PROCESS_IDX_SIZE = 10000
 
 
@@ -46,7 +46,6 @@ class XapianIndex(object):
                 if k in item:
                     item[k] = self.schema['pre'][k](item[k])
 
-        document.set_data(msgpack.packb(item))
         document.add_term(document_id)
         #self.db.replace_document(document_id, document)
         self.db.add_document(document)
