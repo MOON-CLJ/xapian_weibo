@@ -40,11 +40,12 @@ class Schema:
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
-        'dumps_exclude': ['id', 'mid', 'created_at', 'original_pic', 'hashtags', 'emotions', 'urls', 'at_users', 'repost_users', 'reposts', 'comments', 'first_in', 'last_modify'],
-        'pre': {
-            'retweeted_status': lambda x: x['id'],
-            'user': lambda x: x['id']
-        },
+        'iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo'],
+        'pre_func': {
+            'user': lambda x: x['id'] if x else 0,
+            'retweeted_status': lambda x: x['id'] if x else 0,
+            'geo': lambda x: msgpack.packb(x) if x else None,
+        }
         'obj_id': '_id',
         # 用于去重的value no(column)
         'collapse_valueno': 3,

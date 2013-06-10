@@ -20,7 +20,7 @@ iter_keys = ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_co
 pre_func = {
     'user': lambda x: x['id'] if x else 0,
     'retweeted_status': lambda x: x['id'] if x else 0,
-    'geo': lambda x:msgpack.packb(x) if x else None,
+    'geo': lambda x: msgpack.packb(x) if x else None,
 }
 
 class OriginData2Tokudb(object):
