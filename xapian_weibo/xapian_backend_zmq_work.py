@@ -2,28 +2,27 @@
 
 from argparse import ArgumentParser
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
-    InvalidIndexError, _index_field
+    InvalidIndexError, _index_field, SCHEMA_VERSION
 from utils import load_scws
 import sys
 import os
 import signal
 import xapian
-import msgpack
 import zmq
 import time
 import datetime
 
 
-SCHEMA_VERSION = 2
 PROCESS_IDX_SIZE = 10000
 
 
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version, pid):
         self.schema = getattr(Schema, 'v%s' % schema_version)
-        self.db_folder = "_%s_%s" % (dbpath, pid)
+        self.db_folder = '_%s_%s' % (dbpath, pid)
         self.s = load_scws()
         self.db = _database(self.db_folder, writable=True)
+        self.termgen = xapian.TermGenerator()
 
     def document_count(self):
         try:
@@ -31,43 +30,34 @@ class XapianIndex(object):
         except InvalidIndexError:
             return 0
 
-    def update(self, item):
+    def add(self, item):
         document = xapian.Document()
         document_id = DOCUMENT_ID_TERM_PREFIX + str(item[self.schema['obj_id']])
         for field in self.schema['idx_fields']:
             self.index_field(field, document, item, SCHEMA_VERSION)
-        if 'dumps_exclude' in self.schema:
-            for k in self.schema['dumps_exclude']:
-                if k in item:
-                    del item[k]
-
-        if 'pre' in self.schema:
-            for k in self.schema['pre']:
-                if k in item:
-                    item[k] = self.schema['pre'][k](item[k])
 
         document.add_term(document_id)
-        #self.db.replace_document(document_id, document)
+        # self.db.replace_document(document_id, document)
         self.db.add_document(document)
 
     def index_field(self, field, document, item, schema_version):
-        _index_field(field, document, item, schema_version, self.schema)
+        _index_field(field, document, item, schema_version, self.schema, self.termgen)
 
     def close(self):
         self.db.close()
         print 'total index', self.document_count()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     """
     cd data/
-    then run 'py ../xapian_weibo/xapian_backend_zmq_work.py hehe'
+    py ../xapian_weibo/xapian_backend_zmq_work.py hehe
     """
     context = zmq.Context()
 
     # Socket to receive messages on
     receiver = context.socket(zmq.PULL)
-    receiver.connect("tcp://localhost:5557")
+    receiver.connect('tcp://localhost:5557')
 
     parser = ArgumentParser()
     parser.add_argument('dbpath', help='PATH_TO_DATABASE')
@@ -89,7 +79,7 @@ if __name__ == "__main__":
     ts = time.time()
     while 1:
         item = receiver.recv_json()
-        xapian_indexer.update(item)
+        xapian_indexer.add(item)
         count += 1
         if count % PROCESS_IDX_SIZE == 0:
             te = time.time()

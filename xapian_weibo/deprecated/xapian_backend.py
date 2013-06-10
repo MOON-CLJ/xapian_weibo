@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from argparse import ArgumentParser
 from query_base import Q, notQ
 from utils import load_scws, cut
+from utils4scrapy.tk_maintain import _default_mongo
 from utils4scrapy.utils import local2unix
 import os
+import sys
 import xapian
+import simplejson as json
 import msgpack
+import datetime
+import calendar
 import time
 
 
@@ -20,13 +26,21 @@ MONGOD_PORT = 27017
 s = load_scws()
 
 
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print '%r %2.2f sec' % (method.__name__, te - ts)
+        return result
+    return timed
+
+
 class Schema:
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
-        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo'],
-        'index_item_iter_keys': ['retweeted_status', 'user'],
-        'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count'],
+        'iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo'],
         'pre_func': {
             'user': lambda x: x['id'] if x else 0,
             'retweeted_status': lambda x: x['id'] if x else 0,
@@ -51,7 +65,6 @@ class Schema:
     v1 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
-        'index_iter_keys': [],
         'dumps_exclude': ['id', 'first_in', 'last_modify'],
         'pre': {
             'created_at': lambda x: local2unix(x)
@@ -73,6 +86,125 @@ class Schema:
             {'field_name': 'created_at', 'column': 8, 'type': 'long'},
         ],
     }
+
+
+class XapianIndex(object):
+    def __init__(self, dbpath, schema_version, refresh_db=False):
+        self.path = dbpath
+        self.schema = getattr(Schema, 'v%s' % schema_version)
+        self.refresh_db = refresh_db
+
+        self.databases = {}
+        self.ts_and_dbfolders = []
+
+        self.mgdb = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=self.schema['db'])
+        self.collection = self.schema['collection']
+
+    def document_count(self, folder):
+        try:
+            return self.get_database(folder, writable=False).get_doccount()
+        except InvalidIndexError:
+            return 0
+
+    def generate(self, start_time=None):
+        if start_time:
+            start_time = datetime.datetime.strptime(start_time, '%Y-%m-%d')
+            folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
+            self.ts_and_dbfolders.append((calendar.timegm(start_time.timetuple()), folder))
+        else:
+            start_time = datetime.datetime(2009, 8, 1)
+            step_time = datetime.timedelta(days=50)
+            while start_time < datetime.datetime.today():
+                folder = "_%s_%s" % (self.path, start_time.strftime('%Y-%m-%d'))
+                self.ts_and_dbfolders.append((calendar.timegm(start_time.timetuple()), folder))
+                start_time += step_time
+
+    def get_database(self, folder, writable=True):
+        if folder not in self.databases:
+            self.databases[folder] = _database(folder, writable=writable, refresh=self.refresh_db)
+        return self.databases[folder]
+
+    #@profile
+
+    def load_items(self, start_time=None, mode='debug'):
+        if mode == 'idx_all':
+            items = getattr(self.mgdb, self.collection).find(timeout=False)
+            print 'prod mode: 从mongodb加载[%s]里的所有数据' % self.collection
+        elif mode == 'single_given_db':
+            if not start_time:
+                raise Exception('single_given_db mode 需要指定start_time')
+            start_time = self.ts_and_dbfolders[0][0]
+            end_time = start_time + datetime.timedelta(days=50).total_seconds()
+            items = getattr(self.mgdb, self.collection).find({
+                self.schema['posted_at_key']: {
+                    '$gte': start_time,
+                    '$lt': end_time
+                }
+            }, timeout=False)
+            print 'prod mode: 从mongodb加载[%s:%s]里的从%s开始50天的数据' % (self.mgdb, self.collection, datetime.datetime.fromtimestamp(start_time))
+        elif mode == 'debug':
+            with open("../test/sample_tweets.js") as f:
+                items = json.loads(f.readline())
+            print 'debug mode: 从测试数据文件中加载数据'
+
+        return items
+
+    @timeit
+    def index_items(self, start_time=None, mode='debug'):
+        try:
+            count = 0
+            for item in self.load_items(start_time=start_time, mode=mode):
+                count += 1
+                if mode == 'single_given_db':
+                    if not start_time:
+                        raise Exception('single_given_db mode 需要指定start_time')
+                    folder = self.ts_and_dbfolders[0][1]
+                else:
+                    if 'posted_at_key' not in self.schema:
+                        raise Exception('当前mode下需要schema里包含区分folder的posted_at_key')
+                    posted_at = item[self.schema['posted_at_key']]
+                    for i in xrange(len(self.ts_and_dbfolders) - 1):
+                        if self.ts_and_dbfolders[i][0] <= posted_at < self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i][1]
+                            break
+                    else:
+                        if posted_at >= self.ts_and_dbfolders[i + 1][0]:
+                            folder = self.ts_and_dbfolders[i + 1][1]
+
+                self.update(folder, item)
+                if count % PROCESS_IDX_SIZE == 0:
+                    print '[%s] folder[%s] num indexed: %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), folder, count)
+        except Exception:
+            raise
+
+        finally:
+            for database in self.databases.itervalues():
+                database.close()
+
+            for _, folder in self.ts_and_dbfolders:
+                print '[', folder, ']', 'total size', self.document_count(folder)
+
+    def update(self, folder, item):
+        document = xapian.Document()
+        document_id = DOCUMENT_ID_TERM_PREFIX + str(item[self.schema['obj_id']])
+        for field in self.schema['idx_fields']:
+            self.index_field(field, document, item, SCHEMA_VERSION)
+        if 'dumps_exclude' in self.schema:
+            for k in self.schema['dumps_exclude']:
+                if k in item:
+                    del item[k]
+
+        if 'pre' in self.schema:
+            for k in self.schema['pre']:
+                if k in item:
+                    item[k] = self.schema['pre'][k](item[k])
+
+        document.add_term(document_id)
+        self.get_database(folder).replace_document(document_id, document)
+        #self.get_database(folder).add_document(document)
+
+    def index_field(self, field, document, item, schema_version):
+        _index_field(field, document, item, schema_version, self.schema)
 
 
 class XapianSearch(object):
@@ -297,25 +429,36 @@ class XapianSearch(object):
         ).size()
 
 
-def _marshal_value(value, pre_func=None):
+def _marshal_value(value, prefunc=None):
     """
     Private utility method that converts Python values to a string for Xapian values.
+    prefunc 对值做预处理
     """
-    if pre_func:
-        value = pre_func(value)
-    # value 默认为int, long, float
-    value = xapian.sortable_serialise(value)
+    if value is None:
+        return 0
+
+    if prefunc:
+        value = prefunc(value)
+    if isinstance(value, (int, long, float)):
+        value = xapian.sortable_serialise(value)
+    elif isinstance(value, bool):
+        value = 1 if value else 0
+        value = xapian.sortable_serialise(value)
+    value = str(value).lower()
     return value
 
 
-def _marshal_term(term, pre_func=None):
+def _marshal_term(term, prefunc=None):
     """
     Private utility method that converts Python terms to a string for Xapian terms.
     """
-    if pre_func:
-        term = pre_func(term)
+    if term is None:
+        return ''
+
+    if prefunc:
+        term = prefunc(term)
     if isinstance(term, (int, long)):
-        term = str(term)
+        term = str(term).lower()
     return term
 
 
@@ -342,22 +485,29 @@ def _database(folder, writable=False, refresh=False):
     return database
 
 
-def _index_field(field, document, item, schema_version, schema, termgen):
+def _index_field(field, document, item, schema_version, schema):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
     if schema_version == 2:
-        # 可选term在pre_func里处理
-        if field['field_name'] in schema['index_item_iter_keys']:
-            term = _marshal_term(item.get(field['field_name']), schema['pre_func'][field['field_name']])
+        # 可选term存为0
+        if field['field_name'] in ['retweeted_status']:
+            term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else '0'
+            document.add_term(prefix + term)
+        # 必选term
+        elif field['field_name'] in ['user']:
+            term = _marshal_term(item[field['field_name']], schema['pre'][field['field_name']])
             document.add_term(prefix + term)
         # value
-        elif field['field_name'] in schema['index_value_iter_keys']:
-            value = _marshal_value(item.get(field['field_name']))
-            document.add_value(field['column'], value)
+        elif field['field_name'] in ['_id', 'timestamp', 'reposts_count', 'comments_count', 'attitudes_count']:
+            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
         elif field['field_name'] == 'text':
-            text = item['text'].encode('utf-8')
-            tokens = cut(s, text)
+            tokens = cut(s, item[field['field_name']].encode('utf-8'))
+            termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+            """
+            for token, count in Counter(tokens).iteritems():
+                document.add_term(prefix + token, count)
+            """
 
     elif schema_version == 1:
         # 必选term
@@ -381,3 +531,44 @@ class InvalidIndexError(Exception):
 class OperationError(Exception):
     """Raised when queries cannot be operated."""
     pass
+
+if __name__ == '__main__':
+    """
+    cd data/
+    then run 'py (-m memory_profiler) ../xapian_weibo/xapian_backend.py -d hehe'
+    http://pypi.python.org/pypi/memory_profiler
+    """
+    parser = ArgumentParser()
+    parser.add_argument('-d', '--debug', action='store_true', help='DEBUG')
+    parser.add_argument('-a', '--idx_all', action='store_true', help='INDEX WHOLE COLLECTION')
+    parser.add_argument('-p', '--print_folders', action='store_true', help='PRINT FOLDER THEN EXIT')
+    parser.add_argument('-s', '--start_time', nargs=1, help='DATETIME')
+    parser.add_argument('dbpath', help='PATH_TO_DATABASE')
+
+    args = parser.parse_args(sys.argv[1:])
+    debug = args.debug
+    idx_all = args.idx_all
+    start_time = args.start_time[0] if args.start_time else None
+    dbpath = args.dbpath
+
+    if args.print_folders:
+        xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
+        xapian_indexer.generate()
+        for _, folder in xapian_indexer.ts_and_dbfolders:
+            print folder
+
+        sys.exit(0)
+
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=debug)
+    xapian_indexer.generate(start_time)
+    if debug:
+        print 'debug mode'
+        mode = 'debug'
+    elif start_time:
+        print 'single given db mode'
+        mode = 'single_given_db'
+    elif idx_all:
+        print 'idx all collection to multi db mode'
+        mode = 'idx_all'
+
+    xapian_indexer.index_items(start_time, mode)
