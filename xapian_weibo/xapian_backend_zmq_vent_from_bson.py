@@ -6,6 +6,7 @@ import time
 import zmq
 
 BSON_FILEPATH = "/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson"
+PROCESS_IDX_SIZE = 100000
 
 
 def load_items(bs_filepath=BSON_FILEPATH):
