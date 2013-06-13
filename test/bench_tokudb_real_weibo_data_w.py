@@ -4,15 +4,12 @@ import msgpack
 import MySQLdb
 from xapian_weibo.bs_input import KeyValueBSONInput
 from xapian_weibo.utils import timeit
+from xapian_weibo.xapian_backend import Schema
 
 BSON_FILEPATH = '/home/arthas/mongodumps/20130510/master_timeline/master_timeline_weibo.bson'
 
-iter_keys = ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo']
-pre_func = {
-    'user': lambda x: x['id'] if x else 0,
-    'retweeted_status': lambda x: x['id'] if x else 0,
-    'geo': lambda x: msgpack.packb(x) if x else None,
-}
+iter_keys = Schema.v2['origin_data_iter_keys']
+pre_func = Schema.v2['pre_func']
 
 def load_items(bs_filepath=BSON_FILEPATH):
     bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
