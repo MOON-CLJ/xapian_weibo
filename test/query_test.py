@@ -61,25 +61,23 @@ for r in get_results():
         print '** ' * 10
         print r
         break
-"""
 
 print 'query4:'
-begin_ts1 = time.mktime(datetime.datetime(2013, 2, 1).timetuple())
+begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
 end_ts1 = time.mktime(datetime.datetime(2013, 3, 1).timetuple())
 
 query_dict = {
     'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
     '$not': {'retweeted_status': '0'}
 }
-results = s.search(query=query_dict, fields=['user'])
-print len(results)
-
-"""
+count, get_results = s.search(query=query_dict, fields=['user'])
+print count
 uids = set()
 for r in get_results():
     uids.add(r['user'])
 
 print len(uids)
+"""
 
 print 'query5:'
 begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
@@ -92,7 +90,6 @@ print count
 print top_keywords(get_results, top=10)
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
-"""
 """
 print 'query2:'
 query_dict = {'$and': [{'text': [u'中国'], 'uid': 1217743083},

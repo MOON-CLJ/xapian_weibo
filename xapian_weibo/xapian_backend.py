@@ -211,9 +211,6 @@ class XapianSearch(object):
             max_offset = database.get_doccount() - start_offset
 
         mset = self._get_enquire_mset(database, enquire, start_offset, max_offset)
-        print time.time()
-        print mset.size()
-        print time.time()
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
