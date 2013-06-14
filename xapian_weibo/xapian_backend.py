@@ -5,7 +5,6 @@ from query_base import Q, notQ
 from utils import load_scws, cut
 from utils4scrapy.utils import local2unix
 from xapian_weibo.utils import timeit
-import MySQLdb
 import os
 import xapian
 import msgpack
@@ -91,12 +90,6 @@ class XapianSearch(object):
                                    [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(schema, 'v%s' % schema_version)
-
-        # mysql
-        conn = MySQLdb.connect(user='root', passwd='', db='master_timeline')
-        conn.cursorclass=MySQLdb.cursors.DictCursor
-        self.conn = conn
-        self.cursor = conn.cursor()
 
     def parse_query(self, query_dict):
         """
@@ -197,11 +190,7 @@ class XapianSearch(object):
         query = self.parse_query(query)
 
         if xapian.Query.empty(query):
-            if count_only:
-                return 0
-            else:
-                more = False
-                return {'more': more, 'r': []}
+            return 0, lambda: []
 
         database = self.database
         enquire = xapian.Enquire(database)
@@ -222,32 +211,35 @@ class XapianSearch(object):
             max_offset = database.get_doccount() - start_offset
 
         mset = self._get_enquire_mset(database, enquire, start_offset, max_offset)
-        mset_size = mset.size()
-        if mset_size == 0:
-            more = False
-            return {'more': more, 'r': []}
+        print time.time()
+        print mset.size()
+        print time.time()
+        mset.fetch()  # 提前fetch，加快remote访问速度
 
-        more = True if mset_size == max_offset else False
+        def result_generator():
+            if field is not None and set(fields) <= set(['_id', 'terms']):
+                for match in mset:
+                    item = {}
+                    if '_id' in fields:
+                        item['_id'] = match.docid
+                    if 'terms' in fields:
+                        item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
+                    yield item
+            else:
+                for match in mset:
+                    r = msgpack.unpackb(self._get_document_data(database, match.document))
+                    if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
+                        item = {}
+                        for field in fields:
+                            if field == 'terms':
+                                item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
+                            else:
+                                item[field] = r.get(field)
+                    else:
+                        item = r
+                    yield item
 
-        weibo_ids, terms = self._get_document_ids_terms(mset, fields)
-
-        if 'terms' in fields:
-            results = [{'_id': i, 'terms': terms[i]} for i in weibo_ids]
-        else:
-            results = [{'_id': i} for i in weibo_ids]
-        return results
-
-        if 'terms' in fields:
-            fields.remove('terms')
-        if fields == [] or fields == ['_id']:
-            results = [{'_id': i, 'terms': terms[i]} for i in weibo_ids]
-        else:
-            results = self._get_fields_from_mysql(weibo_ids, fields)
-            if terms:
-                for i in xrange(results):
-                    results[i]['terms'] = terms[results[i]['_id']]
-
-        return {'more': more, 'r': results}
+        return mset.size(), result_generator
 
     def _set_sort_by(self, enquire, sort_by):
         sorter = xapian.MultiValueKeyMaker()
@@ -327,7 +319,6 @@ class XapianSearch(object):
             database, enquire, 0, database.get_doccount()
         ).size()
 
-    @timeit
     def _get_document_ids_terms(self, mset, fields):
         weibo_ids = []
         terms = {}
@@ -338,22 +329,6 @@ class XapianSearch(object):
                 terms[match.docid] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
 
         return weibo_ids, terms
-
-    @timeit
-    def _get_fields_from_mysql(self, weibo_ids, fields):
-        if '_id' not in fields:
-            fields.append('_id')
-        ids = [str(_id) for _id in weibo_ids]
-        print len(ids)
-        sql = 'SELECT ' + ','.join(fields) + ' FROM master_timeline_weibo WHERE _id IN (%s)' % ','.join(ids)
-        print time.time()
-        self.cursor.execute(sql)
-        print time.time()
-        results = self.cursor.fetchall()
-        print time.time()
-        print len(results)
-        return results
-
 
 def _marshal_value(value, pre_func=None):
     """
