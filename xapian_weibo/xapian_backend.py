@@ -3,11 +3,13 @@
 
 from query_base import Q, notQ
 from utils import load_scws, cut
-from utils4scrapy.utils import local2unix, timeit
+from utils4scrapy.utils import local2unix
+from xapian_weibo.utils import timeit
 import MySQLdb
 import os
 import xapian
 import msgpack
+import time
 
 
 PROCESS_IDX_SIZE = 20000
@@ -91,7 +93,8 @@ class XapianSearch(object):
         self.schema = getattr(schema, 'v%s' % schema_version)
 
         # mysql
-        conn = MySQLdb.connect(user='root', passwd='', db='master_timeline', cursorclass=MySQLdb.cursors.DictCursor)
+        conn = MySQLdb.connect(user='root', passwd='', db='master_timeline')
+        conn.cursorclass=MySQLdb.cursors.DictCursor
         self.conn = conn
         self.cursor = conn.cursor()
 
@@ -189,7 +192,7 @@ class XapianSearch(object):
         return total_query
 
     def search(self, query=None, sort_by=None, start_offset=0,
-               max_offset=100000, fields=None, count_only=False, **kwargs):
+               max_offset=None, fields=None, count_only=False, **kwargs):
 
         query = self.parse_query(query)
 
@@ -215,25 +218,34 @@ class XapianSearch(object):
         if sort_by:
             self._set_sort_by(enquire, sort_by)
 
+        if not max_offset:
+            max_offset = database.get_doccount() - start_offset
+
         mset = self._get_enquire_mset(database, enquire, start_offset, max_offset)
         mset_size = mset.size()
         if mset_size == 0:
             more = False
             return {'more': more, 'r': []}
 
-        if mset_size == max_offset:
-            more = True
+        more = True if mset_size == max_offset else False
 
         weibo_ids, terms = self._get_document_ids_terms(mset, fields)
 
-        fields.remove('terms', '_id')
-        if fields:
+        if 'terms' in fields:
+            results = [{'_id': i, 'terms': terms[i]} for i in weibo_ids]
+        else:
+            results = [{'_id': i} for i in weibo_ids]
+        return results
+
+        if 'terms' in fields:
+            fields.remove('terms')
+        if fields == [] or fields == ['_id']:
+            results = [{'_id': i, 'terms': terms[i]} for i in weibo_ids]
+        else:
             results = self._get_fields_from_mysql(weibo_ids, fields)
             if terms:
                 for i in xrange(results):
                     results[i]['terms'] = terms[results[i]['_id']]
-        else:
-            results = [{'_id': i, 'terms': terms[i]} for i in weibo_ids]
 
         return {'more': more, 'r': results}
 
@@ -250,6 +262,7 @@ class XapianSearch(object):
 
         enquire.set_sort_by_key(sorter)
 
+    @timeit
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
         A safer version of Xapian.enquire.get_mset
@@ -328,11 +341,17 @@ class XapianSearch(object):
 
     @timeit
     def _get_fields_from_mysql(self, weibo_ids, fields):
-        fields.append('_id')
+        if '_id' not in fields:
+            fields.append('_id')
         ids = [str(_id) for _id in weibo_ids]
-        sql = 'SELECT ' + ','.join(fields) + 'FROM master_timeline_weibo WHERE _id IN (%s)' % ','.join(ids)
+        print len(ids)
+        sql = 'SELECT ' + ','.join(fields) + ' FROM master_timeline_weibo WHERE _id IN (%s)' % ','.join(ids)
+        print time.time()
         self.cursor.execute(sql)
+        print time.time()
         results = self.cursor.fetchall()
+        print time.time()
+        print len(results)
         return results
 
 
