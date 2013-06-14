@@ -3,11 +3,11 @@
 
 from query_base import Q, notQ
 from utils import load_scws, cut
-from utils4scrapy.utils import local2unix
+from utils4scrapy.utils import local2unix, timeit
+import MySQLdb
 import os
 import xapian
 import msgpack
-import time
 
 
 PROCESS_IDX_SIZE = 20000
@@ -78,7 +78,7 @@ class Schema:
 class XapianSearch(object):
     def __init__(self, path, name='master_timeline_weibo', schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
-            return xapian.Database(dbpath)
+            return _database(dbpath)
 
         def merge(db1, db2):
             db1.add_database(db2)
@@ -89,6 +89,11 @@ class XapianSearch(object):
                                    [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(schema, 'v%s' % schema_version)
+
+        # mysql
+        conn = MySQLdb.connect(user='root', passwd='', db='master_timeline', cursorclass=MySQLdb.cursors.DictCursor)
+        self.conn = conn
+        self.cursor = conn.cursor()
 
     def parse_query(self, query_dict):
         """
@@ -184,53 +189,66 @@ class XapianSearch(object):
         return total_query
 
     def search(self, query=None, sort_by=None, start_offset=0,
-               max_offset=None, fields=None, **kwargs):
+               max_offset=100000, fields=None, count_only=False, **kwargs):
 
         query = self.parse_query(query)
 
         if xapian.Query.empty(query):
-            return 0, lambda: []
+            if count_only:
+                return 0
+            else:
+                more = False
+                return {'more': more, 'r': []}
 
         database = self.database
         enquire = xapian.Enquire(database)
+        enquire.set_weighting_scheme(xapian.BoolWeight())  # 使用最简单的weight模型提升效率
+        enquire.set_docid_order(xapian.Enquire.DONT_CARE)  # 不关心mset的顺序
         enquire.set_query(query)
+
         if 'collapse_valueno' in self.schema:
             enquire.set_collapse_key(self.schema['collapse_valueno'])
 
+        if count_only:
+            return self._get_hit_count(database, enquire)
+
         if sort_by:
-            sorter = xapian.MultiValueSorter()
+            self._set_sort_by(enquire, sort_by)
 
-            for sort_field in sort_by:
-                if sort_field.startswith('-'):
-                    reverse = True
-                    sort_field = sort_field[1:]  # Strip the '-'
-                else:
-                    reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
-                sorter.add(self._value_column(sort_field), reverse)
+        mset = self._get_enquire_mset(database, enquire, start_offset, max_offset)
+        mset_size = mset.size()
+        if mset_size == 0:
+            more = False
+            return {'more': more, 'r': []}
 
-            enquire.set_sort_by_key(sorter, True)
+        if mset_size == max_offset:
+            more = True
 
-        if not max_offset:
-            max_offset = database.get_doccount() - start_offset
+        weibo_ids, terms = self._get_document_ids_terms(mset, fields)
 
-        matches = self._get_enquire_mset(database, enquire, start_offset, max_offset)
+        fields.remove('terms', '_id')
+        if fields:
+            results = self._get_fields_from_mysql(weibo_ids, fields)
+            if terms:
+                for i in xrange(results):
+                    results[i]['terms'] = terms[results[i]['_id']]
+        else:
+            results = [{'_id': i, 'terms': terms[i]} for i in weibo_ids]
 
-        def result_generator():
-            for match in matches:
-                r = msgpack.unpackb(self._get_document_data(database, match.document))
-                if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
-                    item = {}
-                    if isinstance(fields, list):
-                        for field in fields:
-                            if field == 'terms':
-                                item['terms'] = dict([(term.term[5:], term.wdf) for term in match.document.termlist() if term.term.startswith('XTEXT')])
-                            else:
-                                item[field] = r.get(field)
-                else:
-                    item = r
-                yield item
+        return {'more': more, 'r': results}
 
-        return self._get_hit_count(database, enquire), result_generator
+    def _set_sort_by(self, enquire, sort_by):
+        sorter = xapian.MultiValueKeyMaker()
+
+        for sort_field in sort_by:
+            if sort_field.startswith('-'):
+                reverse = True
+                sort_field = sort_field[1:]  # Strip the '-'
+            else:
+                reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
+            sorter.add_value(self._value_column(sort_field), reverse)
+
+        enquire.set_sort_by_key(sorter)
 
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
@@ -295,6 +313,27 @@ class XapianSearch(object):
         return self._get_enquire_mset(
             database, enquire, 0, database.get_doccount()
         ).size()
+
+    @timeit
+    def _get_document_ids_terms(self, mset, fields):
+        weibo_ids = []
+        terms = {}
+        mset.fetch()  # 提前fetch，加快remote访问速度
+        for match in mset:
+            weibo_ids.append(match.docid)
+            if 'terms' in fields:
+                terms[match.docid] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
+
+        return weibo_ids, terms
+
+    @timeit
+    def _get_fields_from_mysql(self, weibo_ids, fields):
+        fields.append('_id')
+        ids = [str(_id) for _id in weibo_ids]
+        sql = 'SELECT ' + ','.join(fields) + 'FROM master_timeline_weibo WHERE _id IN (%s)' % ','.join(ids)
+        self.cursor.execute(sql)
+        results = self.cursor.fetchall()
+        return results
 
 
 def _marshal_value(value, pre_func=None):
