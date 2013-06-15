@@ -8,12 +8,15 @@ import sys
 import os
 import signal
 import xapian
+import msgpack
 import zmq
 import time
 import datetime
 
 
 PROCESS_IDX_SIZE = 10000
+iter_keys = Schema.v2['origin_data_iter_keys']
+pre_func = Schema.v2['pre_func']
 
 
 class XapianIndex(object):
@@ -36,6 +39,8 @@ class XapianIndex(object):
         for field in self.schema['idx_fields']:
             self.index_field(field, document, item, SCHEMA_VERSION)
 
+        item = dict([(k, pre_func[k](item.get(k)) if k in pre_func else item.get(k)) for k in iter_keys])
+        document.set_data(msgpack.packb(item))
         document.add_term(document_id)
         # self.db.replace_document(document_id, document)
         self.db.add_document(document)

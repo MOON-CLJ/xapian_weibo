@@ -8,7 +8,6 @@ from xapian_weibo.utils import timeit
 import os
 import xapian
 import msgpack
-import time
 
 
 PROCESS_IDX_SIZE = 20000
@@ -251,7 +250,6 @@ class XapianSearch(object):
 
         enquire.set_sort_by_key(sorter)
 
-    @timeit
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
         A safer version of Xapian.enquire.get_mset
