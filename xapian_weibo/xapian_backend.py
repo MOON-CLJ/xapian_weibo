@@ -30,12 +30,10 @@ class Schema:
         'pre_func': {
             'user': lambda x: x['id'] if x else 0,
             'retweeted_status': lambda x: x['id'] if x else 0,
-            'geo': lambda x: msgpack.packb(x) if x else None,
         },
         'obj_id': '_id',
         # 用于去重的value no(column)
         'collapse_valueno': 3,
-        'posted_at_key': 'timestamp',
         'idx_fields': [
             # term
             {'field_name': 'user', 'column': 0, 'type': 'long'},
@@ -51,10 +49,13 @@ class Schema:
     v1 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
-        'index_iter_keys': [],
-        'dumps_exclude': ['id', 'first_in', 'last_modify'],
-        'pre': {
-            'created_at': lambda x: local2unix(x)
+        'origin_data_iter_keys': ['_id', 'province', 'city', 'verified', 'name', 'friends_count',
+                                  'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
+                                  'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
+        'index_item_iter_keys': ['name', 'location', 'province'],
+        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'pre_func': {
+            'created_at': lambda x: local2unix(x) if x else 0,
         },
         'obj_id': '_id',
         # 用于去重的value no(column)
@@ -213,7 +214,7 @@ class XapianSearch(object):
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
-            if field is not None and set(fields) <= set(['_id', 'terms']):
+            if fields is not None and set(fields) <= set(['_id', 'terms']):
                 for match in mset:
                     item = {}
                     if '_id' in fields:
@@ -315,15 +316,16 @@ class XapianSearch(object):
         ).size()
 
     def _get_document_ids_terms(self, mset, fields):
-        weibo_ids = []
+        ids = []
         terms = {}
         mset.fetch()  # 提前fetch，加快remote访问速度
         for match in mset:
-            weibo_ids.append(match.docid)
+            ids.append(match.docid)
             if 'terms' in fields:
                 terms[match.docid] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
 
-        return weibo_ids, terms
+        return ids, terms
+
 
 def _marshal_value(value, pre_func=None):
     """
@@ -372,34 +374,20 @@ def _database(folder, writable=False, refresh=False):
 
 def _index_field(field, document, item, schema_version, schema, termgen):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-    if schema_version == 2:
-        # 可选term在pre_func里处理
-        if field['field_name'] in schema['index_item_iter_keys']:
-            term = _marshal_term(item.get(field['field_name']), schema['pre_func'][field['field_name']])
-            document.add_term(prefix + term)
-        # value
-        elif field['field_name'] in schema['index_value_iter_keys']:
-            value = _marshal_value(item.get(field['field_name']))
-            document.add_value(field['column'], value)
-        elif field['field_name'] == 'text':
-            text = item['text'].encode('utf-8')
-            tokens = cut(s, text)
-            termgen.set_document(document)
-            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-
-    elif schema_version == 1:
-        # 必选term
-        if field['field_name'] in ['name', 'location', 'province']:
-            term = _marshal_term(item[field['field_name']])
-            document.add_term(prefix + term)
-        # 可选value
-        elif field['field_name'] in ['created_at']:
-            value = _marshal_value(item[field['field_name']], schema['pre'][field['field_name']]) if field['field_name'] in item else '0'
-            document.add_value(field['column'], value)
-        # 必选value
-        elif field['field_name'] in ['_id', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count']:
-            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
-
+    field_name = field['field_name']
+    # 可选term在pre_func里处理
+    if field_name in schema['index_item_iter_keys']:
+        term = _marshal_term(item.get(field_name), schema['pre_func'].get(field_name))
+        document.add_term(prefix + term)
+    # 可选value在pre_func里处理
+    elif field_name in schema['index_value_iter_keys']:
+        value = _marshal_value(item.get(field_name), schema['pre_func'].get(field_name))
+        document.add_value(field['column'], value)
+    elif field_name == 'text':
+        text = item['text'].encode('utf-8')
+        tokens = cut(s, text)
+        termgen.set_document(document)
+        termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 class InvalidIndexError(Exception):
     """Raised when an index can not be opened."""

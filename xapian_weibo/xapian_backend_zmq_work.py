@@ -15,8 +15,6 @@ import datetime
 
 
 PROCESS_IDX_SIZE = 10000
-iter_keys = Schema.v2['origin_data_iter_keys']
-pre_func = Schema.v2['pre_func']
 
 
 class XapianIndex(object):
@@ -25,7 +23,10 @@ class XapianIndex(object):
         self.db_folder = '_%s_%s' % (dbpath, pid)
         self.s = load_scws()
         self.db = _database(self.db_folder, writable=True)
+
         self.termgen = xapian.TermGenerator()
+        self.iter_keys = self.schema['origin_data_iter_keys']
+        self.pre_func = self.schema['pre_func']
 
     def document_count(self):
         try:
@@ -39,7 +40,9 @@ class XapianIndex(object):
         for field in self.schema['idx_fields']:
             self.index_field(field, document, item, SCHEMA_VERSION)
 
-        item = dict([(k, pre_func[k](item.get(k)) if k in pre_func else item.get(k)) for k in iter_keys])
+        # origin_data跟term和value的处理方式有点不一样
+        item = dict([(k, self.pre_func[k](item.get(k)) if k in self.pre_func and item.get(k) else item.get(k))
+                     for k in self.iter_keys])
         document.set_data(msgpack.packb(item))
         document.add_term(document_id)
         # self.db.replace_document(document_id, document)
