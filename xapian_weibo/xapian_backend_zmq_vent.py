@@ -12,13 +12,14 @@ import zmq
 MONGOD_HOST = 'localhost'
 MONGOD_PORT = 27017
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
-db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=schema['db'])
-collection = schema['collection']
 
-BSON_FILEPATH = "/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson"
+BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
 
 
 def load_items_from_mongo(db, collection):
+    db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=schema['db'])
+    collection = schema['collection']
+
     items = getattr(db, collection).find(timeout=False)
     print 'prod mode: 从mongodb加载[%s]里的所有数据' % collection
     return items
@@ -65,10 +66,10 @@ if __name__ == '__main__':
 
     if from_bson:
         for _, item in bs_input.reads():
-            send_one_item(sender, item, tb, ts)
+            send_one_item(sender, item, count, tb, ts)
     else:
         for item in load_items_from_mongo(db, collection):
-            send_one_item(sender, item, tb, ts)
+            send_one_item(sender, item, count, tb, ts)
 
     if from_bson:
         bs_input.close()
