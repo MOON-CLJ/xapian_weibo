@@ -81,6 +81,7 @@ if __name__ == '__main__':
         print 'worker stop, finally close db'
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     # Process index forever
     count = 0
