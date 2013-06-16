@@ -10,14 +10,14 @@ import time
 import zmq
 
 PROCESS_IDX_SIZE = PROCESS_IDX_SIZE * 10
-MONGOD_HOST = 'localhost'
+MONGOD_HOST = '219.224.135.60'
 MONGOD_PORT = 27017
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
 
 BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
 
 
-def load_items_from_mongo(db, collection):
+def load_items_from_mongo():
     db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=schema['db'])
     collection = schema['collection']
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                     print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
                 ts = te
     else:
-        for item in load_items_from_mongo(db, collection):
+        for item in load_items_from_mongo():
             sender.send_json(item)
             count += 1
             if count % PROCESS_IDX_SIZE == 0:
