@@ -9,6 +9,7 @@ import sys
 import time
 import zmq
 
+PROCESS_IDX_SIZE = PROCESS_IDX_SIZE * 10
 MONGOD_HOST = 'localhost'
 MONGOD_PORT = 27017
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
@@ -30,16 +31,6 @@ def load_items_from_bson(bs_filepath=BSON_FILEPATH):
     bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
     return bs_input
 
-
-def send_one_item(sender, item, count, tb, ts):
-    sender.send_json(item)
-    count += 1
-    if count % PROCESS_IDX_SIZE == 0:
-        te = time.time()
-        print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
-        if count % (PROCESS_IDX_SIZE * 100) == 0:
-            print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
-        ts = te
 
 if __name__ == '__main__':
     """
@@ -66,10 +57,24 @@ if __name__ == '__main__':
 
     if from_bson:
         for _, item in bs_input.reads():
-            send_one_item(sender, item, count, tb, ts)
+            sender.send_json(item)
+            count += 1
+            if count % PROCESS_IDX_SIZE == 0:
+                te = time.time()
+                print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
+                if count % (PROCESS_IDX_SIZE * 10) == 0:
+                    print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
+                ts = te
     else:
         for item in load_items_from_mongo(db, collection):
-            send_one_item(sender, item, count, tb, ts)
+            sender.send_json(item)
+            count += 1
+            if count % PROCESS_IDX_SIZE == 0:
+                te = time.time()
+                print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
+                if count % (PROCESS_IDX_SIZE * 10) == 0:
+                    print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
+                ts = te
 
     if from_bson:
         bs_input.close()
