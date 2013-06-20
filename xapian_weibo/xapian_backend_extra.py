@@ -62,7 +62,7 @@ class XapianIndex(object):
 
     def get_database(self, folder, writable=True):
         if folder not in self.databases:
-            self.databases[folder] = _database(folder, writable=writable, refresh=self.refresh_db)
+            self.databases[folder] = _database(folder, writable=writable)
         return self.databases[folder]
 
     @timeit
