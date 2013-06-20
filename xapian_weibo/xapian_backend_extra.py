@@ -70,7 +70,7 @@ class XapianIndex(object):
         try:
             # 如果是情绪的只load最近90天的，否则load全部
             if SCHEMA_VERSION == 1:
-                get_results = _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp'])
+                get_results = _load_weibos_from_xapian()
                 _iter = get_results()
 
             count = 0
