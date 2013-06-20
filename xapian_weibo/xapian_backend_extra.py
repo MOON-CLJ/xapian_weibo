@@ -4,7 +4,7 @@
 from argparse import ArgumentParser
 from xapian_backend import timeit, _marshal_value, _marshal_term, _database, InvalidIndexError
 from xapian_backend import XapianSearch
-from utils import load_scws, cut
+from utils import load_scws
 from bs_input import KeyValueBSONInput
 import os
 import sys
@@ -22,31 +22,24 @@ DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
 LEVELDBPATH = '/home/mirage/leveldb'
-BSON_FILEPATH = "/opt/backup/mongodump/20130129/weibo/statuses.bson"
 
 s = load_scws()
 
 
-def load_items(bs_filepath=BSON_FILEPATH):
-    print 'bson file mode: 从备份的BSON文件中加载微博'
-    bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
-    return bs_input
-
-
 class XapianIndex(object):
-    def __init__(self, dbpath, schema_version, refresh_db=False):
+    def __init__(self, dbpath, schema_version):
         self.path = dbpath
         self.schema = getattr(Schema, 'v%s' % schema_version)
-        self.refresh_db = refresh_db
 
         self.databases = {}
         self.ts_and_dbfolders = []
         if schema_version == 1:
+            """
             self.weibo_multi_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_multi_sentiment'),
                                                                 block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
-        elif schema_version == 2:
-            self.xapian_search_user = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_user', schema_version=1)
-            self.xapian_search_weibo = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
+            """
+            self.weibo_positive_negative_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_positive_negative_sentiment'),
+                                                                            block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
     def document_count(self, folder):
         try:
@@ -79,10 +72,6 @@ class XapianIndex(object):
             if SCHEMA_VERSION == 1:
                 get_results = _load_weibos_from_xapian(fields=['_id', 'user', 'terms', 'timestamp'])
                 _iter = get_results()
-            elif SCHEMA_VERSION == 2:
-                bs_input = load_items()
-                _iter = bs_input.reads()
-                #get_results = _load_weibos_from_xapian(total_days=3650, fields=['_id', 'user', 'text', 'terms', 'timestamp', 'retweeted_status'])
 
             count = 0
             try:
@@ -152,12 +141,12 @@ class XapianIndex(object):
 
     def index_field(self, field, document, item, schema_version):
         if schema_version == 1:
-            _index_field(field, document, item, schema_version, self.schema, weibo_multi_sentiment_bucket=self.weibo_multi_sentiment_bucket)
+            _index_field(field, document, item, schema_version, self.schema, weibo_positive_negative_sentiment_bucket=self.weibo_positive_negative_sentiment_bucket)
         elif schema_version == 2:
             _index_field(field, document, item, schema_version, self.schema)
 
 
-def _index_field(field, document, item, schema_version, schema, weibo_multi_sentiment_bucket=None):
+def _index_field(field, document, item, schema_version, schema, weibo_positive_negative_sentiment_bucket=None):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
     if schema_version == 1:
         # 必选term
@@ -165,7 +154,7 @@ def _index_field(field, document, item, schema_version, schema, weibo_multi_sent
             term = _marshal_term(item[field['field_name']])
             document.add_term(prefix + term)
         elif field['field_name'] == 'sentiment':
-            sentiment = weibo_multi_sentiment_bucket.Get(str(item[schema['obj_id']]))
+            sentiment = weibo_positive_negative_sentiment_bucket.Get(str(item[schema['obj_id']]))
             sentiment = int(sentiment)
             term = _marshal_term(sentiment)
             document.add_term(prefix + term)
@@ -177,33 +166,19 @@ def _index_field(field, document, item, schema_version, schema, weibo_multi_sent
             termgen = xapian.TermGenerator()
             termgen.set_document(document)
             termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
-    elif schema_version == 2:
-        # 必选term
-        if field['field_name'] in ['user']:
-            term = _marshal_term(item[field['field_name']]['id'])
-            document.add_term(prefix + term)
-        # value
-        elif field['field_name'] in ['_id', 'timestamp']:
-            document.add_value(field['column'], _marshal_value(item[field['field_name']]))
-        elif field['field_name'] == 'text':
-            tokens = cut(s, item[field['field_name']].encode('utf-8'))
-            termgen = xapian.TermGenerator()
-            termgen.set_document(document)
-            termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 
 @timeit
-def _load_weibos_from_xapian(total_days=90, fields=['_id', 'retweeted_status', 'text']):
-    today = datetime.datetime.today()
-    end_ts = time.mktime(datetime.datetime(today.year, today.month, today.day, 2, 0).timetuple())
-    begin_ts = end_ts - total_days * 24 * 3600
+def _load_weibos_from_xapian():
+    begin_ts = time.mktime(datetime.datetime(2012, 9, 1).timetuple())
+    end_ts = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
 
     query_dict = {
         'timestamp': {'$gt': begin_ts, '$lt': end_ts},
     }
-    s = XapianSearch(path='/opt/xapian_weibo/data/', name='master_timeline_weibo')
 
-    count, get_results = s.search(query=query_dict, fields=fields)
+    s = XapianSearch(path='/opt/xapian_weibo/data/20130616/', name='master_timeline_weibo')
+    count, get_results = s.search(query=query_dict, fields=['_id', 'user', 'terms', 'timestamp'])
     print count
     return get_results
 
@@ -234,6 +209,6 @@ if __name__ == '__main__':
     args = parser.parse_args(sys.argv[1:])
     dbpath = args.dbpath
 
-    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, refresh_db=False)
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION)
     xapian_indexer.generate()
     xapian_indexer.index_items()
