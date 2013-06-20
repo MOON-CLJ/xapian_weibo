@@ -395,11 +395,11 @@ def _index_field(field, document, item, schema_version, schema, termgen):
     field_name = field['field_name']
     # 可选term在pre_func里处理
     if field_name in schema['index_item_iter_keys']:
-        term = _marshal_term(item.get(field_name), schema['pre_func'].get(field_name))
+        term = _marshal_term(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_term(prefix + term)
     # 可选value在pre_func里处理
     elif field_name in schema['index_value_iter_keys']:
-        value = _marshal_value(item.get(field_name), schema['pre_func'].get(field_name))
+        value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_value(field['column'], value)
     elif field_name == 'text':
         text = item['text'].encode('utf-8')
