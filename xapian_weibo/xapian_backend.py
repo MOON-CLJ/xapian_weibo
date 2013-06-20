@@ -75,6 +75,24 @@ class Schema:
         ],
     }
 
+    v3 = {
+        'origin_data_iter_keys': [],
+        'index_item_iter_keys': ['user', 'sentiment'],
+        'index_value_iter_keys': ['_id', 'timestamp'],
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'text', 'column': 1, 'type': 'text'},
+            {'field_name': 'sentiment', 'column': 2, 'type': 'int'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+        ],
+    }
+
 
 class XapianSearch(object):
     def __init__(self, path, name='master_timeline_weibo', schema=Schema, schema_version=SCHEMA_VERSION):
