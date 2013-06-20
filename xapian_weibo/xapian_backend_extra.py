@@ -226,20 +226,6 @@ class Schema:
         ],
     }
 
-    v2 = {
-        'obj_id': '_id',
-        # 用于去重的value no(column)
-        'collapse_valueno': 2,
-        'posted_at_key': 'timestamp',
-        'idx_fields': [
-            # term
-            {'field_name': 'user', 'column': 0, 'type': 'long'},
-            {'field_name': 'text', 'column': 1, 'type': 'text'},
-            # value
-            {'field_name': '_id', 'column': 2, 'type': 'long'},
-            {'field_name': 'timestamp', 'column': 3, 'type': 'long'},
-        ],
-    }
 
 if __name__ == '__main__':
     parser = ArgumentParser()

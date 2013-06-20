@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# 此脚本能将weibo数据项正确写入tokudb
 
 from argparse import ArgumentParser
 from xapian_backend import Schema
