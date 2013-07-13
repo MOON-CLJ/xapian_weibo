@@ -214,11 +214,9 @@ class XapianSearch(object):
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
-            if fields is not None and set(fields) <= set(['_id', 'terms']):
+            if fields == ['terms']:
                 for match in mset:
                     item = {}
-                    if '_id' in fields:
-                        item['_id'] = match.docid
                     if 'terms' in fields:
                         item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
                     yield item
