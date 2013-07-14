@@ -214,8 +214,8 @@ class XapianSearch(object):
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
-            if fields == ['terms']:
-                for match in mset:
+            if fields is not None and set(fields) <= set(['terms']):
+                for match in mset:  # 如果fields为[], 这情况下，不返回任何一项
                     item = {}
                     if 'terms' in fields:
                         item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
@@ -223,7 +223,7 @@ class XapianSearch(object):
             else:
                 for match in mset:
                     r = msgpack.unpackb(self._get_document_data(database, match.document))
-                    if fields is not None:  # 如果fields为[], 这情况下，不返回任何一项
+                    if fields is not None:
                         item = {}
                         for field in fields:
                             if field == 'terms':
