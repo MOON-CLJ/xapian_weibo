@@ -26,7 +26,7 @@ class XapianIndex(object):
 
         self.termgen = xapian.TermGenerator()
         self.iter_keys = self.schema['origin_data_iter_keys']
-        self.pre_func = self.schema['pre_func']
+        self.pre_func = self.schema.get('pre_func', {})
 
     def document_count(self):
         try:

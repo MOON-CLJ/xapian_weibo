@@ -75,6 +75,24 @@ class Schema:
         ],
     }
 
+    v3 = {
+        'origin_data_iter_keys': [],
+        'index_item_iter_keys': ['user', 'sentiment'],
+        'index_value_iter_keys': ['_id', 'timestamp'],
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'text', 'column': 1, 'type': 'text'},
+            {'field_name': 'sentiment', 'column': 2, 'type': 'int'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+        ],
+    }
+
 
 class XapianSearch(object):
     def __init__(self, path, name='master_timeline_weibo', schema=Schema, schema_version=SCHEMA_VERSION):
@@ -375,11 +393,11 @@ def _index_field(field, document, item, schema_version, schema, termgen):
     field_name = field['field_name']
     # 可选term在pre_func里处理
     if field_name in schema['index_item_iter_keys']:
-        term = _marshal_term(item.get(field_name), schema['pre_func'].get(field_name))
+        term = _marshal_term(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_term(prefix + term)
     # 可选value在pre_func里处理
     elif field_name in schema['index_value_iter_keys']:
-        value = _marshal_value(item.get(field_name), schema['pre_func'].get(field_name))
+        value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_value(field['column'], value)
     elif field_name == 'text':
         text = item['text'].encode('utf-8')
