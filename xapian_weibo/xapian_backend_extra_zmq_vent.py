@@ -18,15 +18,15 @@ schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
 
 @timeit
 def _load_weibos_from_xapian():
-    begin_ts = time.mktime(datetime.datetime(2012, 9, 1).timetuple())
-    end_ts = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
+    begin_ts = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
+    end_ts = time.mktime(datetime.datetime(2013, 7, 1).timetuple())
 
     query_dict = {
         'timestamp': {'$gt': begin_ts, '$lt': end_ts},
     }
 
     s = XapianSearch(path='/opt/xapian_weibo/data/20130616/', name='master_timeline_weibo')
-    count, get_results = s.search(query=query_dict, fields=['_id', 'user', 'text', 'timestamp'])
+    count, get_results = s.search(query=query_dict, fields=['_id', 'user', 'text', 'timestamp', 'reposts_count'])
     print count
     return get_results
 
