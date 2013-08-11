@@ -332,17 +332,6 @@ class XapianSearch(object):
             database, enquire, 0, database.get_doccount()
         ).size()
 
-    def _get_document_ids_terms(self, mset, fields):
-        ids = []
-        terms = {}
-        mset.fetch()  # 提前fetch，加快remote访问速度
-        for match in mset:
-            ids.append(match.docid)
-            if 'terms' in fields:
-                terms[match.docid] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
-
-        return ids, terms
-
 
 def _marshal_value(value, pre_func=None):
     """
