@@ -20,9 +20,10 @@ s = XapianSearch(path='../data/', name='master_timeline_weibo')
 # 若fields参数不指定，或者为None,则返回所有字段，除terms之外
 # 如果需要返回terms，请一一指定需要的字段，并包括terms
 # 简单示例如下
-"""
+
 count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms', '_id'])
 
+"""
 print 'query1:'
 
 for r in get_results():
@@ -77,7 +78,6 @@ for r in get_results():
     uids.add(r['user'])
 
 print len(uids)
-"""
 
 print 'query5:'
 begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
@@ -88,6 +88,15 @@ query_dict = {
 count, get_results = s.search(query=query_dict, fields=['terms'])
 print count
 print top_keywords(get_results, top=10)
+"""
+
+print 'query6:'
+r = s.search_by_id(3434992295856700, fields=['text', 'user', 'terms', '_id'])
+print r['_id']
+print r['text']
+print r['user']
+print r['terms']
+
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值
 """

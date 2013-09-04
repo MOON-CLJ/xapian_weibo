@@ -109,6 +109,14 @@ class XapianSearch(object):
                                    [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(schema, 'v%s' % schema_version)
+        enquire = xapian.Enquire(self.database)
+        enquire.set_weighting_scheme(xapian.BoolWeight())  # 使用最简单的weight模型提升效率
+        enquire.set_docid_order(xapian.Enquire.DONT_CARE)  # 不关心mset的顺序
+
+        if 'collapse_valueno' in self.schema:
+            enquire.set_collapse_key(self.schema['collapse_valueno'])
+
+        self.enquire = enquire
 
     def parse_query(self, query_dict):
         """
@@ -203,6 +211,35 @@ class XapianSearch(object):
 
         return total_query
 
+    def search_by_id(self, id_, fields=None):
+        db = self.database
+        postlist = db.postlist(DOCUMENT_ID_TERM_PREFIX + str(id_))
+        try:
+            plitem = postlist.next()
+        except StopIteration:
+            return
+
+        doc = db.get_document(plitem.docid)
+        if fields == []:
+            raise ValueError('fields should not be empty list')
+        elif fields == ['terms']:
+            item = {}
+            item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
+            return item
+        else:
+            r = msgpack.unpackb(self._get_document_data(db, doc))
+            if fields is not None:
+                item = {}
+                for field in fields:
+                    if field == 'terms':
+                        item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
+                    else:
+                        item[field] = r.get(field)
+            else:
+                item = r
+            return item
+
+
     def search(self, query=None, sort_by=None, start_offset=0,
                max_offset=None, fields=None, count_only=False, **kwargs):
 
@@ -211,37 +248,34 @@ class XapianSearch(object):
         if xapian.Query.empty(query):
             return 0, lambda: []
 
-        database = self.database
-        enquire = xapian.Enquire(database)
-        enquire.set_weighting_scheme(xapian.BoolWeight())  # 使用最简单的weight模型提升效率
-        enquire.set_docid_order(xapian.Enquire.DONT_CARE)  # 不关心mset的顺序
+        db = self.database
+        enquire = self.enquire
+
         enquire.set_query(query)
 
-        if 'collapse_valueno' in self.schema:
-            enquire.set_collapse_key(self.schema['collapse_valueno'])
-
         if count_only:
-            return self._get_hit_count(database, enquire)
+            return self._get_hit_count(db, enquire)
 
         if sort_by:
             self._set_sort_by(enquire, sort_by)
 
         if not max_offset:
-            max_offset = database.get_doccount() - start_offset
+            max_offset = db.get_doccount() - start_offset
 
-        mset = self._get_enquire_mset(database, enquire, start_offset, max_offset)
+        mset = self._get_enquire_mset(db, enquire, start_offset, max_offset)
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
-            if fields is not None and set(fields) <= set(['terms']):
-                for match in mset:  # 如果fields为[], 这情况下，不返回任何一项
+            if fields == []:
+                raise ValueError('fields should not be empty list')
+            elif fields == ['terms']:
+                for match in mset:
                     item = {}
-                    if 'terms' in fields:
-                        item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
+                    item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
                     yield item
             else:
                 for match in mset:
-                    r = msgpack.unpackb(self._get_document_data(database, match.document))
+                    r = msgpack.unpackb(self._get_document_data(db, match.document))
                     if fields is not None:
                         item = {}
                         for field in fields:
