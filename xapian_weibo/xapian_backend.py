@@ -74,7 +74,7 @@ class Schema:
     }
 
     v3 = {
-        'origin_data_iter_keys': [],
+        'origin_data_iter_keys': ['_id'],
         'index_item_iter_keys': ['user', 'sentiment'],
         'index_value_iter_keys': ['_id', 'timestamp'],
         'obj_id': '_id',
@@ -88,6 +88,7 @@ class Schema:
             # value
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
         ],
     }
 
