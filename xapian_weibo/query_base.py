@@ -236,3 +236,103 @@ class notQ(Q):
 class InvalidQueryError(Exception):
     """Raised when a query is illegal."""
     pass
+
+
+class OperationError(Exception):
+    """Raised when queries cannot be operated."""
+    pass
+
+
+def build_query_tree(query_dict):
+    """将字典转成语法树"""
+    ops = ['$not']
+    bi_ops = ['$or', '$and', '$xor']
+
+    def op(a, b, operation):
+        if operation == '$and':
+            return a & b
+        elif operation == '$or':
+            return a | b
+        elif operation == '$xor':
+            return a ^ b
+        else:
+            raise OperationError('Operation %s cannot be processed.' % operation)
+
+    def grammar_tree(query_dict):
+        total_query = Q()
+        for k in query_dict.keys():
+            if k in bi_ops:
+                #deal with expression without operator
+                bi_query = reduce(lambda a, b: op(a, b, k),
+                                  map(lambda expr: Q(**expr),
+                                      filter(lambda expr: not (set(expr.keys()) & set(ops + bi_ops)), query_dict[k])), Q())
+                #deal with nested expression
+                nested_query = reduce(lambda a, b: op(a, b, k),
+                                      map(lambda nested_query_dict: grammar_tree(nested_query_dict),
+                                          filter(lambda expr: set(expr.keys()) & set(ops + bi_ops), query_dict[k])), Q())
+                if nested_query:
+                    total_query &= op(bi_query, nested_query, k)
+                else:
+                    total_query &= bi_query
+
+            elif k in ops:
+                if k == '$not':
+                    not_dict = {}
+                    #nested_query_dict = {}
+                    for not_k in query_dict[k]:
+                        if not_k not in ops + bi_ops:
+                            not_dict[not_k] = query_dict[k][not_k]
+                        else:
+                            pass
+                            #nested query in a $not statement is not implemented
+                            #nested_query_dict.update({not_k: query_dict[k][not_k]})
+                    not_query = notQ(**not_dict)
+                    total_query &= not_query
+
+            else:
+                total_query &= Q(**{k: query_dict[k]})
+        return total_query
+
+    total_query = grammar_tree(query_dict)
+
+    return total_query
+
+
+def parse_query(query_dict, schema, database):
+    """
+    Given a `query_dict`, will attempt to return a xapian.Query
+
+    Required arguments:
+        ``query_dict`` -- A query dict similar to MongoDB style to parse
+
+    Returns a xapian.Query
+
+    Operator Reference:
+        Comparison:
+        equal, key = value, { key:value }
+
+        $lt, $gt, the field less or more than the specified value, { field: { $lt: value, $gt: value } }
+
+        Logical:
+        $and, perform logical AND operation in expressions,  { $and: [{ <expression1> } , { <expression2> },
+                                                                        ... , { <expressionN> }] }
+
+        $or, perform logical OR operation in expressions like the $and operation
+
+        $xor, perform logical XOR operation in expressions like the $and operation
+
+        $not, perform logical NOT operation in experssions, which get the conjunction of both negative
+              experssions, { $not: { <expression1> }, { <expression2> }, ...  { <expressionN> } }
+
+        PS: if not any operation is specified, the logical AND operation is the default operation
+        (An implicit AND operation is performed when specifying a comma separated list of expressions).
+            See more query examples in test files.
+    """
+    if query_dict is None:
+        return xapian.Query('')  # Match everything
+    elif query_dict == {}:
+        return xapian.Query()  # Match nothing
+
+    query_tree = build_query_tree(query_dict)
+
+    return query_tree.to_query(schema, database)

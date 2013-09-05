@@ -23,6 +23,11 @@ EXTRA_EMOTIONWORD_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'emotionlist.txt')
 EXTRA_ONE_WORD_WHITE_LIST_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'one_word_white_list.txt')
 
 
+def local2unix(time_str):
+    time_format = '%a %b %d %H:%M:%S +0800 %Y'
+    return time.mktime(time.strptime(time_str, time_format))
+
+
 def load_scws():
     s = scws.Scws()
     s.set_charset(SCWS_ENCODING)
