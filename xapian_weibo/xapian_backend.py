@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from query_base import parse_query
-from utils import load_scws, cut, timeit, local2unix
+from utils import load_scws, cut, local2unix
 import os
 import xapian
 import msgpack
@@ -116,7 +116,6 @@ class XapianSearch(object):
 
         self.enquire = enquire
 
-
     def search_by_id(self, id_, fields=None):
         db = self.database
         postlist = db.postlist(DOCUMENT_ID_TERM_PREFIX + str(id_))
@@ -144,7 +143,6 @@ class XapianSearch(object):
             else:
                 item = r
             return item
-
 
     def search(self, query=None, sort_by=None, start_offset=0,
                max_offset=None, fields=None, count_only=False, **kwargs):
