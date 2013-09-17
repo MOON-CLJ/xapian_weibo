@@ -94,7 +94,7 @@ class Schema:
 
 
 class XapianSearch(object):
-    def __init__(self, path, name='master_timeline_weibo', schema=Schema, schema_version=SCHEMA_VERSION):
+    def __init__(self, path, name='master_timeline_weibo', stub=None, schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return _database(dbpath)
 
@@ -102,9 +102,12 @@ class XapianSearch(object):
             db1.add_database(db2)
             return db1
 
-        self.database = reduce(merge,
-                               map(create,
-                                   [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
+        if stub:
+            self.database = xapian.open_stub(stub)
+        else:
+            self.database = reduce(merge,
+                                   map(create,
+                                       [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(schema, 'v%s' % schema_version)
         enquire = xapian.Enquire(self.database)
