@@ -25,7 +25,7 @@ for r in get_results():
 print 'hits: %s' % count
 """
 
-stub = os.path.join(os.getcwd(), 'master_timeline_weibo_stub1')
+stub = os.path.join(os.getcwd(), 'master_timeline_weibo_stub_remote')
 s = XapianSearch(stub=stub, include_remote=True)
 count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms', '_id'])
 
