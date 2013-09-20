@@ -94,7 +94,7 @@ class Schema:
 
 
 class XapianSearch(object):
-    def __init__(self, path=None, name='master_timeline_weibo', stub=None, schema=Schema, schema_version=SCHEMA_VERSION):
+    def __init__(self, path=None, name='master_timeline_weibo', stub=None, include_remote=False, schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return _database(dbpath)
 
@@ -121,6 +121,7 @@ class XapianSearch(object):
             enquire.set_collapse_key(self.schema['collapse_valueno'])
 
         self.enquire = enquire
+        self.include_remote = include_remote
 
     def search_by_id(self, id_, fields=None):
         db = self.database
@@ -166,7 +167,7 @@ class XapianSearch(object):
             return self._get_hit_count(db, enquire)
 
         if sort_by:
-            self._set_sort_by(enquire, sort_by)
+            self._set_sort_by(enquire, sort_by, self.include_remote)
 
         if not max_offset:
             max_offset = db.get_doccount() - start_offset
@@ -198,18 +199,27 @@ class XapianSearch(object):
 
         return mset.size(), result_generator
 
-    def _set_sort_by(self, enquire, sort_by):
-        sorter = xapian.MultiValueKeyMaker()
+    def _set_sort_by(self, enquire, sort_by, remote=False):
+        if remote:
+            for sort_field in sort_by:
+                if sort_field.startswith('-'):
+                    reverse = False
+                    sort_field = sort_field[1:]  # Strip the '-'
+                else:
+                    reverse = True
+                enquire.set_sort_by_value(self._value_column(sort_field), reverse)
+        else:
+            sorter = xapian.MultiValueKeyMaker()
 
-        for sort_field in sort_by:
-            if sort_field.startswith('-'):
-                reverse = True
-                sort_field = sort_field[1:]  # Strip the '-'
-            else:
-                reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
-            sorter.add_value(self._value_column(sort_field), reverse)
+            for sort_field in sort_by:
+                if sort_field.startswith('-'):
+                    reverse = True
+                    sort_field = sort_field[1:]  # Strip the '-'
+                else:
+                    reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
+                sorter.add_value(self._value_column(sort_field), reverse)
 
-        enquire.set_sort_by_key(sorter)
+            enquire.set_sort_by_key(sorter)
 
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
