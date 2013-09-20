@@ -1,0 +1,10 @@
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20043
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20047
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20051
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20055
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20059
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20063
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20067
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20071
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20075
+remote ssh idec xapian-progsrv /opt/xapian_weibo/data/20130616/_master_timeline_weibo_20079

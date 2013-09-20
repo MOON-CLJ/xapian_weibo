@@ -94,7 +94,7 @@ class Schema:
 
 
 class XapianSearch(object):
-    def __init__(self, path, name='master_timeline_weibo', schema=Schema, schema_version=SCHEMA_VERSION):
+    def __init__(self, path=None, name='master_timeline_weibo', stub=None, include_remote=False, schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return _database(dbpath)
 
@@ -102,9 +102,15 @@ class XapianSearch(object):
             db1.add_database(db2)
             return db1
 
-        self.database = reduce(merge,
-                               map(create,
-                                   [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
+        if stub:
+            if os.path.isfile(stub):
+                self.database = _stub_database(stub)
+            elif os.path.isdir(stub):
+                self.database = reduce(merge,
+                                       map(_stub_database, [p for p in os.listdir(stub)]))
+        else:
+            self.database = reduce(merge,
+                                   map(create, [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(schema, 'v%s' % schema_version)
         enquire = xapian.Enquire(self.database)
@@ -115,6 +121,7 @@ class XapianSearch(object):
             enquire.set_collapse_key(self.schema['collapse_valueno'])
 
         self.enquire = enquire
+        self.include_remote = include_remote
 
     def search_by_id(self, id_, fields=None):
         db = self.database
@@ -160,7 +167,7 @@ class XapianSearch(object):
             return self._get_hit_count(db, enquire)
 
         if sort_by:
-            self._set_sort_by(enquire, sort_by)
+            self._set_sort_by(enquire, sort_by, self.include_remote)
 
         if not max_offset:
             max_offset = db.get_doccount() - start_offset
@@ -192,18 +199,27 @@ class XapianSearch(object):
 
         return mset.size(), result_generator
 
-    def _set_sort_by(self, enquire, sort_by):
-        sorter = xapian.MultiValueKeyMaker()
+    def _set_sort_by(self, enquire, sort_by, remote=False):
+        if remote:
+            for sort_field in sort_by:
+                if sort_field.startswith('-'):
+                    reverse = False
+                    sort_field = sort_field[1:]  # Strip the '-'
+                else:
+                    reverse = True
+                enquire.set_sort_by_value(self._value_column(sort_field), reverse)
+        else:
+            sorter = xapian.MultiValueKeyMaker()
 
-        for sort_field in sort_by:
-            if sort_field.startswith('-'):
-                reverse = True
-                sort_field = sort_field[1:]  # Strip the '-'
-            else:
-                reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
-            sorter.add_value(self._value_column(sort_field), reverse)
+            for sort_field in sort_by:
+                if sort_field.startswith('-'):
+                    reverse = True
+                    sort_field = sort_field[1:]  # Strip the '-'
+                else:
+                    reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
+                sorter.add_value(self._value_column(sort_field), reverse)
 
-        enquire.set_sort_by_key(sorter)
+            enquire.set_sort_by_key(sorter)
 
     def _get_enquire_mset(self, database, enquire, start_offset, max_offset):
         """
@@ -310,8 +326,31 @@ def _database(folder, writable=False, refresh=False):
         try:
             database = xapian.Database(folder)
         except xapian.DatabaseOpeningError:
-            raise InvalidIndexError(u'Unable to open index at %s' % folder)
+            raise InvalidIndexError(u'Unable to open database at %s' % folder)
 
+    return database
+
+
+def _stub_database(stub):
+    f = open(stub, 'U')
+    dbpaths = f.readlines()
+    f.close()
+    if not dbpaths[0].startswith('remote'):
+        # local database
+        database = xapian.open_stub(stub)
+        return database
+
+    dbpaths = [p.lstrip('remote ssh ') for p in dbpaths]
+
+    def create(dbpath):
+        return xapian.remote_open("ssh", dbpath)
+
+    def merge(db1, db2):
+        db1.add_database(db2)
+        return db1
+
+    database = reduce(merge,
+                      map(create, [p for p in dbpaths]))
     return database
 
 
