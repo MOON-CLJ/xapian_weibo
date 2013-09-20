@@ -94,7 +94,7 @@ class Schema:
 
 
 class XapianSearch(object):
-    def __init__(self, path, name='master_timeline_weibo', stub=None, schema=Schema, schema_version=SCHEMA_VERSION):
+    def __init__(self, path=None, name='master_timeline_weibo', stub=None, schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
             return _database(dbpath)
 
@@ -103,11 +103,14 @@ class XapianSearch(object):
             return db1
 
         if stub:
-            self.database = xapian.open_stub(stub)
+            if os.path.isfile(stub):
+                self.database = _stub_database(stub)
+            elif os.path.isdir(stub):
+                self.database = reduce(merge,
+                                       map(_stub_database, [p for p in os.listdir(stub)]))
         else:
             self.database = reduce(merge,
-                                   map(create,
-                                       [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
+                                   map(create, [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
 
         self.schema = getattr(schema, 'v%s' % schema_version)
         enquire = xapian.Enquire(self.database)
@@ -313,8 +316,31 @@ def _database(folder, writable=False, refresh=False):
         try:
             database = xapian.Database(folder)
         except xapian.DatabaseOpeningError:
-            raise InvalidIndexError(u'Unable to open index at %s' % folder)
+            raise InvalidIndexError(u'Unable to open database at %s' % folder)
 
+    return database
+
+
+def _stub_database(stub):
+    f = open(stub, 'U')
+    dbpaths = f.readlines()
+    f.close()
+    if not dbpaths[0].startswith('remote'):
+        # local database
+        database = xapian.open_stub(stub)
+        return database
+
+    dbpaths = [p.lstrip('remote ssh ') for p in dbpaths]
+
+    def create(dbpath):
+        return xapian.remote_open("ssh", dbpath)
+
+    def merge(db1, db2):
+        db1.add_database(db2)
+        return db1
+
+    database = reduce(merge,
+                      map(create, [p for p in dbpaths]))
     return database
 
 
