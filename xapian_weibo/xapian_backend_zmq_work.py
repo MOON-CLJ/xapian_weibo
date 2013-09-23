@@ -40,7 +40,7 @@ class XapianIndex(object):
         for field in self.schema['idx_fields']:
             self.index_field(field, document, item, SCHEMA_VERSION)
 
-        # origin_data跟term和value的处理方式有点不一样
+        # origin_data跟term和value的处理方式不一样
         item = dict([(k, self.pre_func[k](item.get(k)) if k in self.pre_func and item.get(k) else item.get(k))
                      for k in self.iter_keys])
         document.set_data(msgpack.packb(item))
