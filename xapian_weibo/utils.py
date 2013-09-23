@@ -159,8 +159,8 @@ def cut(s, text, f=None, cx=False):
         return [tk[0] for tk in tks]
 
 def filter(text):
-    pattern_list=['\(分享自 .*\)','转发微博','http://t.cn/\w*','@\S*','//','#.*#']
+    pattern_list=[r'\（分享自 .*\）',r'http://t.cn/\w*']
     for i in pattern_list:
-        p=re.compile('%s' % i)
+        p=re.compile(i)
         text=p.sub('',text)
     return text
