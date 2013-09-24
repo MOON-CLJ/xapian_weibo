@@ -8,7 +8,7 @@ import itertools
 import collections
 import multiprocessing
 import operator
-
+import re
 
 SCWS_ENCODING = 'utf-8'
 SCWS_RULES = '/usr/local/scws/etc/rules.utf8.ini'
@@ -146,14 +146,21 @@ def count_words(item):
 def cut(s, text, f=None, cx=False):
     if f:
         tks = [token for token
-               in s.participle(text)
+               in s.participle(filter(text))
                if token[1] in f and (3 < len(token[0]) < 30 or token[0] in single_word_whitelist)]
     else:
         tks = [token for token
-               in s.participle(text)
+               in s.participle(filter(text))
                if 3 < len(token[0]) < 30 or token[0] in single_word_whitelist]
 
     if cx:
         return tks
     else:
         return [tk[0] for tk in tks]
+
+def filter(text):
+    pattern_list=[r'\（分享自 .*\）',r'http://t.cn/\w*']
+    for i in pattern_list:
+        p=re.compile(i)
+        text=p.sub('',text)
+    return text
