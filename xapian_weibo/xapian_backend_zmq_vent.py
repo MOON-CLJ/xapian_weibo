@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
+from consts import SCHEMA_VERSION, XAPIAN_ZMQ_VENT_PORT
 from utils4scrapy.tk_maintain import _default_mongo
-from xapian_backend_zmq_work import SCHEMA_VERSION, PROCESS_IDX_SIZE
+from xapian_backend_zmq_work import PROCESS_IDX_SIZE
 from bs_input import KeyValueBSONInput
 from xapian_backend import Schema
 import sys
@@ -41,7 +42,7 @@ if __name__ == '__main__':
 
     # Socket to send messages on
     sender = context.socket(zmq.PUSH)
-    sender.bind("tcp://*:5557")
+    sender.bind("tcp://*:%s" % XAPIAN_ZMQ_VENT_PORT)
 
     parser = ArgumentParser()
     parser.add_argument('-b', '--bson', action='store_true', help='from bson')

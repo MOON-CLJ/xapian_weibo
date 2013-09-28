@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from filelock.filelock import FileLock
+from consts import XAPIAN_INDEX_LOCK_FILE
+from datetime import datetime
+
 import os
 import scws
 import time
@@ -165,3 +169,11 @@ def filter(text):
         p = re.compile(i)
         text = p.sub('', text)
     return text
+
+
+def log_to_stub(stub_file_dir, dbpath, db_folder):
+    with FileLock(XAPIAN_INDEX_LOCK_FILE):
+        stub_file = "%s_%s" % (dbpath, datetime.now().date().strftime("%Y%m%d"))
+        stub_file = os.path.join(stub_file_dir, stub_file)
+        with open(stub_file, 'aw') as f:
+            f.write("%s\n" % db_folder)

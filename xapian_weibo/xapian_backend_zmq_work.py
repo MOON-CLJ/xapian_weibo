@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
+from consts import SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT, \
+        XAPIAN_STUB_FILE_DIR
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
-    InvalidIndexError, _index_field, SCHEMA_VERSION
-from utils import load_scws
+    InvalidIndexError, _index_field
+from utils import load_scws, log_to_stub
 import sys
 import os
 import signal
@@ -19,6 +21,7 @@ PROCESS_IDX_SIZE = 10000
 
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version, pid):
+        self.dbpath = dbpath
         self.schema = getattr(Schema, 'v%s' % schema_version)
         self.db_folder = '_%s_%s' % (dbpath, pid)
         self.s = load_scws()
@@ -51,8 +54,12 @@ class XapianIndex(object):
     def index_field(self, field, document, item, schema_version):
         _index_field(field, document, item, schema_version, self.schema, self.termgen)
 
+    def _log_to_stub(self):
+        log_to_stub(XAPIAN_STUB_FILE_DIR, self.dbpath, self.db_folder)
+
     def close(self):
         self.db.close()
+        self._log_to_stub()
         print 'total index', self.document_count()
 
 
@@ -65,7 +72,7 @@ if __name__ == '__main__':
 
     # Socket to receive messages on
     receiver = context.socket(zmq.PULL)
-    receiver.connect('tcp://localhost:5557')
+    receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
 
     parser = ArgumentParser()
     parser.add_argument('dbpath', help='PATH_TO_DATABASE')
@@ -80,6 +87,7 @@ if __name__ == '__main__':
         xapian_indexer.close()
         print 'worker stop, finally close db'
         sys.exit(0)
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
