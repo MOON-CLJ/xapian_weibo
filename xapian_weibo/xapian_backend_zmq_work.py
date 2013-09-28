@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from consts import SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT, \
-        XAPIAN_STUB_FILE_DIR
+        XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     InvalidIndexError, _index_field
 from utils import load_scws, log_to_stub
@@ -23,7 +23,7 @@ class XapianIndex(object):
     def __init__(self, dbpath, schema_version, pid):
         self.dbpath = dbpath
         self.schema = getattr(Schema, 'v%s' % schema_version)
-        self.db_folder = '_%s_%s' % (dbpath, pid)
+        self.db_folder = os.path.join(XAPIAN_DATA_DIR, '_%s_%s' % (dbpath, pid))
         self.s = load_scws()
         self.db = _database(self.db_folder, writable=True)
 
