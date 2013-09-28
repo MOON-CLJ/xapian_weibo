@@ -79,7 +79,7 @@ class SimpleMapReduce(object):
     def partition(self, mapped_values):
         """
         >>> s = [('yellow', 1), ('blue', 2), ('yellow', 3), ('blue', 4), ('red', 1)]
-        >>> d = defaultdict(list)
+        >>> d = collections.defaultdict(list)
         >>> for k, v in s:
         ...     d[k].append(v)
         ...
@@ -158,9 +158,10 @@ def cut(s, text, f=None, cx=False):
     else:
         return [tk[0] for tk in tks]
 
+
 def filter(text):
-    pattern_list=[r'\（分享自 .*\）',r'http://t.cn/\w*']
+    pattern_list = [r'\（分享自 .*\）', r'http://t.cn/\w*']
     for i in pattern_list:
-        p=re.compile(i)
-        text=p.sub('',text)
+        p = re.compile(i)
+        text = p.sub('', text)
     return text
