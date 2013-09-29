@@ -121,6 +121,36 @@ class XapianSearch(object):
         self.enquire = enquire
         self.include_remote = include_remote
 
+    @fields_not_empty
+    def iter_all_docs(self, fields=None):
+        db = self.database
+        match_all = ""
+        postlist = db.postlist(match_all)
+        while 1:
+            try:
+                plitem = postlist.next()
+            except StopIteration:
+                break
+
+            doc = db.get_document(plitem.docid)
+            if fields == ['terms']:
+                item = {}
+                item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
+                yield item
+            else:
+                r = msgpack.unpackb(self._get_document_data(db, doc))
+                if fields is not None:
+                    item = {}
+                    for field in fields:
+                        if field == 'terms':
+                            item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
+                        else:
+                            item[field] = r.get(field)
+                else:
+                    item = r
+                yield item
+
+    @fields_not_empty
     def search_by_id(self, id_, fields=None):
         db = self.database
         postlist = db.postlist(DOCUMENT_ID_TERM_PREFIX + str(id_))
@@ -130,8 +160,6 @@ class XapianSearch(object):
             return
 
         doc = db.get_document(plitem.docid)
-        if fields == []:
-            raise ValueError('fields should not be empty list')
         elif fields == ['terms']:
             item = {}
             item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
@@ -149,6 +177,7 @@ class XapianSearch(object):
                 item = r
             return item
 
+    @fields_not_empty
     def search(self, query=None, sort_by=None, start_offset=0,
                max_offset=None, fields=None, count_only=False, **kwargs):
 
@@ -174,9 +203,7 @@ class XapianSearch(object):
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
-            if fields == []:
-                raise ValueError('fields should not be empty list')
-            elif fields == ['terms']:
+            if fields == ['terms']:
                 for match in mset:
                     item = {}
                     item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
@@ -373,3 +400,12 @@ def _index_field(field, document, item, schema_version, schema, termgen):
 class InvalidIndexError(Exception):
     """Raised when an index can not be opened."""
     pass
+
+
+def fields_not_empty(func):                                                                                                                                                                                  │·
+    def _(*args, **kwargs):                                                                                                                                                                               │·
+        fields = kwargs.get('fields')
+        if fields == []:
+            raise ValueError('fields should not be empty list')
+        return func(*args, **kwargs)                                                                                                                                                                  │·
+    return _
