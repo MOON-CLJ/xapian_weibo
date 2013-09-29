@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_PORT, XAPIAN_FLUSH_DB_SIZE
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_PORT, XAPIAN_FLUSH_DB_SIZE, \
+        BSON_FILEPATH
 from bs_input import KeyValueBSONInput
 from xapian_backend import Schema
 import sys
@@ -11,8 +12,6 @@ import zmq
 XAPIAN_FLUSH_DB_SIZE = XAPIAN_FLUSH_DB_SIZE * 10
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
-
-BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
 
 
 def load_items_from_bson(bs_filepath=BSON_FILEPATH):

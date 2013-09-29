@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from argparse import ArgumentParser
-from consts import SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT, \
-        XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR, XAPIAN_FLUSH_DB_SIZE
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT, \
+        XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR, XAPIAN_FLUSH_DB_SIZE, XAPIAN_DB_PATH
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     InvalidIndexError, _index_field
 from utils import load_scws, log_to_stub
+from datetime import datetime
 import sys
 import os
 import signal
@@ -13,14 +13,16 @@ import xapian
 import msgpack
 import zmq
 import time
-import datetime
+
+SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 
 
 class XapianIndex(object):
     def __init__(self, dbpath, schema_version, pid):
         self.dbpath = dbpath
         self.schema = getattr(Schema, 'v%s' % schema_version)
-        self.db_folder = os.path.join(XAPIAN_DATA_DIR, '_%s_%s' % (dbpath, pid))
+        totay_date_str = datetime.now().date().strftime("%Y%m%d")
+        self.db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (totay_date_str, dbpath, pid))
         self.s = load_scws()
         self.db = _database(self.db_folder, writable=True)
 
@@ -71,12 +73,7 @@ if __name__ == '__main__':
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
 
-    parser = ArgumentParser()
-    parser.add_argument('dbpath', help='PATH_TO_DATABASE')
-
-    args = parser.parse_args(sys.argv[1:])
-    dbpath = args.dbpath
-
+    dbpath = XAPIAN_DB_PATH
     pid = os.getpid()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, pid=pid)
 
@@ -99,4 +96,4 @@ if __name__ == '__main__':
             te = time.time()
             cost = te - ts
             ts = te
-            print '[%s] folder[%s] num indexed: %s %s sec/per %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
+            print '[%s] folder[%s] num indexed: %s %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)

@@ -2,6 +2,7 @@
 /tmp
 /simple
 /data
+/stub
 /simplehaha
 /test/_hehe*
 test/leveldb*
@@ -35,8 +36,5 @@ pip-log.txt
 
 #Translations
 *.mo
-
-#Mr Developer
-.mr.developer.cfg
 
 .DS_Store
