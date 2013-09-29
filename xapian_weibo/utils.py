@@ -171,9 +171,17 @@ def filter(text):
     return text
 
 
-def log_to_stub(stub_file_dir, dbpath, db_folder):
+# FIXME host
+STUB_REMOTE_FILE_PER_LINE = "remote ssh %(host)s xapian-progsrv %(db_folder)s\n"
+STUB_FILE_PER_LINE = "chert %(db_folder)s\n"
+
+
+def log_to_stub(stub_file_dir, dbpath, db_folder, remote=False, host=None):
     with FileLock(XAPIAN_INDEX_LOCK_FILE):
         totay_date_str = datetime.now().date().strftime("%Y%m%d")
         stub_file = os.path.join(stub_file_dir, "%s_%s" % (dbpath, totay_date_str))
         with open(stub_file, 'aw') as f:
-            f.write("%s\n" % db_folder)
+            if remote:
+                f.write(STUB_REMOTE_FILE_PER_LINE % {"host": host, "db_folder": db_folder})
+            else:
+                f.write(STUB_FILE_PER_LINE % {"db_folder": db_folder})

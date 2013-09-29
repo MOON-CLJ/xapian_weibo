@@ -91,6 +91,15 @@ class Schema:
     }
 
 
+def fields_not_empty(func):
+    def _(*args, **kwargs):
+        fields = kwargs.get('fields')
+        if fields == []:
+            raise ValueError('fields should not be empty list')
+        return func(*args, **kwargs)
+    return _
+
+
 class XapianSearch(object):
     def __init__(self, path=None, name='master_timeline_weibo', stub=None, include_remote=False, schema=Schema, schema_version=SCHEMA_VERSION):
         def create(dbpath):
@@ -160,7 +169,7 @@ class XapianSearch(object):
             return
 
         doc = db.get_document(plitem.docid)
-        elif fields == ['terms']:
+        if fields == ['terms']:
             item = {}
             item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
             return item
@@ -400,12 +409,3 @@ def _index_field(field, document, item, schema_version, schema, termgen):
 class InvalidIndexError(Exception):
     """Raised when an index can not be opened."""
     pass
-
-
-def fields_not_empty(func):                                                                                                                                                                                  │·
-    def _(*args, **kwargs):                                                                                                                                                                               │·
-        fields = kwargs.get('fields')
-        if fields == []:
-            raise ValueError('fields should not be empty list')
-        return func(*args, **kwargs)                                                                                                                                                                  │·
-    return _
