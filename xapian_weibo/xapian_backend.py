@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from consts import XAPIAN_INDEX_SCHEMA_VERSION
 from query_base import parse_query
 from utils import load_scws, cut, local2unix
 import os
@@ -8,12 +9,9 @@ import xapian
 import msgpack
 
 
-PROCESS_IDX_SIZE = 20000
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
-MONGOD_HOST = 'localhost'
-MONGOD_PORT = 27017
 
 s = load_scws()
 

@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from consts import SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT, \
-        XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR
+        XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR, XAPIAN_FLUSH_DB_SIZE
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     InvalidIndexError, _index_field
 from utils import load_scws, log_to_stub
@@ -14,9 +14,6 @@ import msgpack
 import zmq
 import time
 import datetime
-
-
-PROCESS_IDX_SIZE = 10000
 
 
 class XapianIndex(object):
@@ -98,8 +95,8 @@ if __name__ == '__main__':
         item = receiver.recv_json()
         xapian_indexer.add(item)
         count += 1
-        if count % PROCESS_IDX_SIZE == 0:
+        if count % XAPIAN_FLUSH_DB_SIZE == 0:
             te = time.time()
             cost = te - ts
             ts = te
-            print '[%s] folder[%s] num indexed: %s %s sec/per %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, PROCESS_IDX_SIZE)
+            print '[%s] folder[%s] num indexed: %s %s sec/per %s' % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)

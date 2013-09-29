@@ -1,30 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-from consts import SCHEMA_VERSION, XAPIAN_ZMQ_VENT_PORT
-from utils4scrapy.tk_maintain import _default_mongo
-from xapian_backend_zmq_work import PROCESS_IDX_SIZE
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_PORT, XAPIAN_FLUSH_DB_SIZE
 from bs_input import KeyValueBSONInput
 from xapian_backend import Schema
 import sys
 import time
 import zmq
 
-PROCESS_IDX_SIZE = PROCESS_IDX_SIZE * 10
-MONGOD_HOST = '219.224.135.60'
-MONGOD_PORT = 27017
+XAPIAN_FLUSH_DB_SIZE = XAPIAN_FLUSH_DB_SIZE * 10
+SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
 
 BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
-
-
-def load_items_from_mongo():
-    db = _default_mongo(MONGOD_HOST, MONGOD_PORT, usedb=schema['db'])
-    collection = schema['collection']
-
-    items = getattr(db, collection).find(timeout=False)
-    print 'prod mode: 从mongodb加载[%s]里的所有数据' % collection
-    return items
 
 
 def load_items_from_bson(bs_filepath=BSON_FILEPATH):
@@ -35,7 +23,7 @@ def load_items_from_bson(bs_filepath=BSON_FILEPATH):
 
 if __name__ == '__main__':
     """
-    then run 'py xapian_backend_zmq_vent.py -b'
+    'py xapian_backend_zmq_vent.py -b'
     """
 
     context = zmq.Context()
@@ -60,20 +48,10 @@ if __name__ == '__main__':
         for _, item in bs_input.reads():
             sender.send_json(item)
             count += 1
-            if count % PROCESS_IDX_SIZE == 0:
+            if count % XAPIAN_FLUSH_DB_SIZE == 0:
                 te = time.time()
-                print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
-                if count % (PROCESS_IDX_SIZE * 10) == 0:
-                    print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
-                ts = te
-    else:
-        for item in load_items_from_mongo():
-            sender.send_json(item)
-            count += 1
-            if count % PROCESS_IDX_SIZE == 0:
-                te = time.time()
-                print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
-                if count % (PROCESS_IDX_SIZE * 10) == 0:
+                print 'deliver cost: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
+                if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
                     print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
                 ts = te
 
