@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from xapian_backend_zmq_work import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_FLUSH_DB_SIZE
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_VENT_PORT
 from xapian_backend import Schema, XapianSearch
 from utils import timeit
 import datetime
@@ -10,7 +10,7 @@ import time
 import zmq
 
 XAPIAN_FLUSH_DB_SIZE = XAPIAN_FLUSH_DB_SIZE * 10
-LEVELDBPATH = '/home/mirage/leveldb'
+LEVELDBPATH = '/home/arthas/leveldb'
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
 
@@ -18,13 +18,13 @@ schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
 @timeit
 def _load_weibos_from_xapian():
     begin_ts = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
-    end_ts = time.mktime(datetime.datetime(2013, 7, 1).timetuple())
+    end_ts = time.mktime(datetime.datetime(2013, 1, 3).timetuple())
 
     query_dict = {
         'timestamp': {'$gt': begin_ts, '$lt': end_ts},
     }
 
-    s = XapianSearch(path='/opt/xapian_weibo/data/20130616/', name='master_timeline_weibo')
+    s = XapianSearch(path='/home/arthas/dev/xapian_weibo/data', name='master_timeline_weibo')
     count, get_results = s.search(query=query_dict, fields=['_id', 'user', 'text', 'timestamp', 'reposts_count'])
     print count
     return get_results
@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     # Socket to send messages on
     sender = context.socket(zmq.PUSH)
-    sender.bind("tcp://*:5557")
+    sender.bind("tcp://*:%s" % XAPIAN_ZMQ_VENT_PORT)
 
     count = 0
     ts = time.time()
@@ -50,7 +50,10 @@ if __name__ == '__main__':
 
     get_results = _load_weibos_from_xapian()
     for item in get_results():
-        sentiment = weibo_positive_negative_sentiment_bucket.Get(str(item['_id']))
+        try:
+            sentiment = weibo_positive_negative_sentiment_bucket.Get(str(item['_id']))
+        except KeyError:
+            sentiment = 0
         item['sentiment'] = int(sentiment)
 
         sender.send_json(item)
