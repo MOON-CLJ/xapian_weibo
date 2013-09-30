@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 
-from argparse import ArgumentParser
-from xapian_backend_zmq_work import SCHEMA_VERSION, PROCESS_IDX_SIZE
+from xapian_backend_zmq_work import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_FLUSH_DB_SIZE
 from xapian_backend import Schema, XapianSearch
 from utils import timeit
 import datetime
 import os
 import leveldb
-import sys
 import time
 import zmq
 
-PROCESS_IDX_SIZE = PROCESS_IDX_SIZE * 10
+XAPIAN_FLUSH_DB_SIZE = XAPIAN_FLUSH_DB_SIZE * 10
 LEVELDBPATH = '/home/mirage/leveldb'
+SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
 
 
@@ -42,10 +41,6 @@ if __name__ == '__main__':
     sender = context.socket(zmq.PUSH)
     sender.bind("tcp://*:5557")
 
-    parser = ArgumentParser()
-    parser.add_argument('-b', '--bson', action='store_true', help='from bson')
-    args = parser.parse_args(sys.argv[1:])
-
     count = 0
     ts = time.time()
     tb = ts
@@ -60,10 +55,10 @@ if __name__ == '__main__':
 
         sender.send_json(item)
         count += 1
-        if count % PROCESS_IDX_SIZE == 0:
+        if count % XAPIAN_FLUSH_DB_SIZE == 0:
             te = time.time()
-            print 'deliver cost: %s sec/per %s' % (te - ts, PROCESS_IDX_SIZE)
-            if count % (PROCESS_IDX_SIZE * 10) == 0:
+            print 'deliver cost: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
+            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
                 print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
             ts = te
 
