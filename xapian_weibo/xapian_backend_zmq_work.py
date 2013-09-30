@@ -21,8 +21,8 @@ class XapianIndex(object):
     def __init__(self, dbpath, schema_version, pid):
         self.dbpath = dbpath
         self.schema = getattr(Schema, 'v%s' % schema_version)
-        totay_date_str = datetime.now().date().strftime("%Y%m%d")
-        self.db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (totay_date_str, dbpath, pid))
+        today_date_str = datetime.now().date().strftime("%Y%m%d")
+        self.db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (today_date_str, dbpath, pid))
         self.s = load_scws()
         self.db = _database(self.db_folder, writable=True)
 

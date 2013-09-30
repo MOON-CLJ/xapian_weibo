@@ -178,8 +178,8 @@ STUB_FILE_PER_LINE = "chert %(db_folder)s\n"
 
 def log_to_stub(stub_file_dir, dbpath, db_folder, remote=False, host=None):
     with FileLock(XAPIAN_INDEX_LOCK_FILE):
-        totay_date_str = datetime.now().date().strftime("%Y%m%d")
-        stub_file = os.path.join(stub_file_dir, "%s_%s" % (dbpath, totay_date_str))
+        today_date_str = datetime.now().date().strftime("%Y%m%d")
+        stub_file = os.path.join(stub_file_dir, "%s_%s" % (dbpath, today_date_str))
         with open(stub_file, 'aw') as f:
             if remote:
                 f.write(STUB_REMOTE_FILE_PER_LINE % {"host": host, "db_folder": db_folder})
