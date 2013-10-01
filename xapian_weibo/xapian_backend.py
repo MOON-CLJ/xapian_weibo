@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from consts import XAPIAN_INDEX_SCHEMA_VERSION
+from consts import XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
 from query_base import parse_query
 from utils import load_scws, cut, local2unix
 import os
@@ -9,7 +9,7 @@ import xapian
 import msgpack
 
 
-SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
+SCHEMA_VERSION = XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
