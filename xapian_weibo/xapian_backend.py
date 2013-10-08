@@ -90,6 +90,53 @@ class Schema:
         ],
     }
 
+    v4 = {
+        'origin_data_iter_keys': ['_id','domain'], 
+        'index_item_iter_keys': ['name', 'location', 'province'],
+        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'obj_id': '_id',
+        #处理None
+        'pre_func': {
+            'created_at': lambda x: x if x else 0,
+        },
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'name', 'column': 0, 'type': 'term'},
+            {'field_name': 'location', 'column': 1, 'type': 'term'},
+            {'field_name': 'province', 'column': 2, 'type': 'term'},
+            {'field_name': 'domain', 'column': 3, 'type': 'term'},
+            # value
+            {'field_name': '_id', 'column': 4, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'statuses_count', 'column': 6, 'type': 'long'},
+            {'field_name': 'friends_count', 'column': 7, 'type': 'long'},
+            {'field_name': 'bi_followers_count', 'column': 8, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 9, 'type': 'long'},
+        ],
+    }
+
+    v5 = {
+        'origin_data_iter_keys': ['_id','_id_reposted'],
+        'index_item_iter_keys': ['user', '_uid_reposted'],
+        'index_value_iter_keys': ['_id', '_id_reposted', 'timestamp', 'reposts_count'],
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'text', 'column': 1, 'type': 'text'},
+            {'field_name': '_uid_reposted', 'column': 2, 'type': 'long'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': '_id_reposted', 'column': 4, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 5, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 6, 'type': 'long'},
+        ],
+    }
+
 
 def fields_not_empty(func):
     def _(*args, **kwargs):
@@ -395,6 +442,10 @@ def _index_field(field, document, item, schema_version, schema, termgen):
     if field_name in schema['index_item_iter_keys']:
         term = _marshal_term(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_term(prefix + term)
+    elif field_name == 'domain':
+        for t in item.get(field_name).split(','):
+            term = _marshal_term(t, schema.get('pre_func', {}).get(field_name))
+            document.add_term(prefix + term)
     # 可选value在pre_func里处理
     elif field_name in schema['index_value_iter_keys']:
         value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))
