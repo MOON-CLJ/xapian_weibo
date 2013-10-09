@@ -5,6 +5,8 @@ from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     InvalidIndexError, _index_field
 from utils import load_scws, log_to_stub
+
+from argparse import ArgumentParser
 from datetime import datetime
 import sys
 import os
@@ -18,8 +20,9 @@ SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 
 
 class XapianIndex(object):
-    def __init__(self, dbpath, schema_version, pid):
+    def __init__(self, dbpath, schema_version, pid, remote_stub):
         self.dbpath = dbpath
+        self.remote_stub = remote_stub
         self.schema = getattr(Schema, 'v%s' % schema_version)
         today_date_str = datetime.now().date().strftime("%Y%m%d")
         self.db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (today_date_str, dbpath, pid))
@@ -54,7 +57,7 @@ class XapianIndex(object):
         _index_field(field, document, item, schema_version, self.schema, self.termgen)
 
     def _log_to_stub(self):
-        log_to_stub(XAPIAN_STUB_FILE_DIR, self.dbpath, self.db_folder)
+        log_to_stub(XAPIAN_STUB_FILE_DIR, self.dbpath, self.db_folder, remote_stub=self.remote_stub)
 
     def close(self):
         self.db.close()
@@ -65,7 +68,7 @@ class XapianIndex(object):
 if __name__ == '__main__':
     """
     cd data/
-    py ../xapian_weibo/xapian_backend_zmq_work.py hehe
+    py ../xapian_weibo/xapian_backend_zmq_work.py -r
     """
     context = zmq.Context()
 
@@ -73,9 +76,14 @@ if __name__ == '__main__':
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
 
+    parser = ArgumentParser()
+    parser.add_argument('-r', '--remote_stub', action='store_true', help='remote stub')
+    args = parser.parse_args(sys.argv[1:])
+    remote_stub = args.remote_stub
+
     dbpath = XAPIAN_DB_PATH
     pid = os.getpid()
-    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, pid=pid)
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, pid, remote_stub)
 
     def signal_handler(signal, frame):
         xapian_indexer.close()
