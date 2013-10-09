@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from consts import XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
+from consts import XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION, XAPIAN_REMOTE_OPEN_TIMEOUT
 from query_base import parse_query
 from utils import load_scws, cut, local2unix
 import os
@@ -377,7 +377,7 @@ def _stub_database(stub):
     dbpaths = [p.lstrip('remote ssh ') for p in dbpaths]
 
     def create(dbpath):
-        return xapian.remote_open("ssh", dbpath)
+        return xapian.remote_open('ssh', dbpath, XAPIAN_REMOTE_OPEN_TIMEOUT)
 
     def merge(db1, db2):
         db1.add_database(db2)

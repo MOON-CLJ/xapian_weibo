@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 XAPIAN_INDEX_LOCK_FILE = '/tmp/xapian_weibo'
-XAPIAN_INDEX_SCHEMA_VERSION = 2
+XAPIAN_REMOTE_OPEN_TIMEOUT = 100000  # 100s
+XAPIAN_INDEX_SCHEMA_VERSION = 1
 XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION = 2
 XAPIAN_ZMQ_VENT_PORT = 5557
 
@@ -15,8 +16,8 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
 
 PROD_VENV = 1
 if PROD_VENV:
-    XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
-    XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
+    XAPIAN_DATA_DIR = '/home/arthas/var/lib/xapian_weibo/data'
+    XAPIAN_STUB_FILE_DIR = '/home/arthas/var/lib/xapian_weibo/stub'
     XAPIAN_ZMQ_VENT_HOST = '219.224.135.61'
     XAPIAN_FLUSH_DB_SIZE = 20000
     if XAPIAN_INDEX_SCHEMA_VERSION == 2:
