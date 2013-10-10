@@ -6,6 +6,7 @@ XAPIAN_REMOTE_OPEN_TIMEOUT = 100000  # 100s
 XAPIAN_INDEX_SCHEMA_VERSION = 2
 XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION = 2
 XAPIAN_ZMQ_VENT_PORT = 5557
+XAPIAN_ZMQ_CTRL_VENT_PORT = 5558
 
 if XAPIAN_INDEX_SCHEMA_VERSION == 2:
     XAPIAN_DB_PATH = 'master_timeline_weibo'
@@ -18,8 +19,9 @@ PROD_VENV = 1
 if PROD_VENV:
     XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
     XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
-    XAPIAN_ZMQ_VENT_HOST = '219.224.135.61'
+    XAPIAN_ZMQ_VENT_HOST = '219.224.135.61'  # 分发机器的ip
     XAPIAN_FLUSH_DB_SIZE = 20000
+    XAPIAN_ZMQ_WORK_KILL_INTERVAL = 3600  # 1 hour
     if XAPIAN_INDEX_SCHEMA_VERSION == 2:
         BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
     elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
@@ -29,6 +31,7 @@ else:
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/xapian_weibo/stub'
     XAPIAN_ZMQ_VENT_HOST = 'localhost'
     XAPIAN_FLUSH_DB_SIZE = 2000
+    XAPIAN_ZMQ_WORK_KILL_INTERVAL = 0  # immediately
     if XAPIAN_INDEX_SCHEMA_VERSION == 2:
         BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
     elif XAPIAN_INDEX_SCHEMA_VERSION == 1:

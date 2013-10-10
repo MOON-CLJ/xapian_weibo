@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
-        XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, \
-        XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR, XAPIAN_FLUSH_DB_SIZE, XAPIAN_DB_PATH
+    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, \
+    XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR, XAPIAN_FLUSH_DB_SIZE, \
+    XAPIAN_DB_PATH, XAPIAN_ZMQ_WORK_KILL_INTERVAL
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     InvalidIndexError, _index_field
 from utils import load_scws, log_to_stub
@@ -99,6 +100,7 @@ if __name__ == '__main__':
     # Process index forever
     count = 0
     ts = time.time()
+    tb = ts
     receive_kill = False
     while 1:
         socks = dict(poller.poll())
@@ -111,9 +113,15 @@ if __name__ == '__main__':
                 cost = te - ts
                 ts = te
                 print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
-        elif receive_kill:
+        elif receive_kill and time.time() - tb > XAPIAN_ZMQ_WORK_KILL_INTERVAL:
+            """
+            定期kill，可以记录work开启的时间
+            然后收到kill的时候判断一下当前时间减去work开启的时间
+            是否超过某个阈值，是则执行kill操作
+            配套的prod模式下，应该在每隔XAPIAN_ZMQ_WORK_KILL_INTERVAL新开work
+            """
             xapian_indexer.close()
-            print 'receive "KILL", worker stop, finally close db'
+            print 'receive "KILL", worker stop, finally close db, cost: %ss' % (time.time() - tb)
             break
 
         # Any waiting controller command acts as 'KILL'
