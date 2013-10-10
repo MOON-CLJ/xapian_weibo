@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT, \
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
+        XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, \
         XAPIAN_STUB_FILE_DIR, XAPIAN_DATA_DIR, XAPIAN_FLUSH_DB_SIZE, XAPIAN_DB_PATH
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     InvalidIndexError, _index_field
@@ -76,6 +77,16 @@ if __name__ == '__main__':
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
 
+    # Socket for control input
+    controller = context.socket(zmq.SUB)
+    controller.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_CTRL_VENT_PORT))
+    controller.setsockopt(zmq.SUBSCRIBE, "")
+
+    # Process messages from receiver and controller
+    poller = zmq.Poller()
+    poller.register(receiver, zmq.POLLIN)
+    poller.register(controller, zmq.POLLIN)
+
     parser = ArgumentParser()
     parser.add_argument('-r', '--remote_stub', action='store_true', help='remote stub')
     args = parser.parse_args(sys.argv[1:])
@@ -85,23 +96,26 @@ if __name__ == '__main__':
     pid = os.getpid()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, pid, remote_stub)
 
-    def signal_handler(signal, frame):
-        xapian_indexer.close()
-        print 'worker stop, finally close db'
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
     # Process index forever
     count = 0
     ts = time.time()
+    receive_kill = False
     while 1:
-        item = receiver.recv_json()
-        xapian_indexer.add(item)
-        count += 1
-        if count % XAPIAN_FLUSH_DB_SIZE == 0:
-            te = time.time()
-            cost = te - ts
-            ts = te
-            print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
+        socks = dict(poller.poll())
+        if socks.get(receiver) == zmq.POLLIN:
+            item = receiver.recv_json()
+            xapian_indexer.add(item)
+            count += 1
+            if count % XAPIAN_FLUSH_DB_SIZE == 0:
+                te = time.time()
+                cost = te - ts
+                ts = te
+                print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
+        elif receive_kill:
+            xapian_indexer.close()
+            print 'receive "KILL", worker stop, finally close db'
+            break
+
+        # Any waiting controller command acts as 'KILL'
+        if socks.get(controller) == zmq.POLLIN:
+            receive_kill = True

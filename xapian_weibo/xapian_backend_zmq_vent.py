@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_PORT, XAPIAN_FLUSH_DB_SIZE, \
-        BSON_FILEPATH
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
+        XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, \
+        XAPIAN_FLUSH_DB_SIZE, BSON_FILEPATH
 from bs_input import KeyValueBSONInput
 from xapian_backend import Schema
 import sys
@@ -53,6 +54,10 @@ if __name__ == '__main__':
     sender = context.socket(zmq.PUSH)
     sender.bind("tcp://*:%s" % XAPIAN_ZMQ_VENT_PORT)
 
+    # Socket for worker control
+    controller = context.socket(zmq.PUB)
+    controller.bind("tcp://*:%s" % XAPIAN_ZMQ_CTRL_VENT_PORT)
+
     parser = ArgumentParser()
     parser.add_argument('-b', '--bson', action='store_true', help='from bson')
     args = parser.parse_args(sys.argv[1:])
@@ -66,6 +71,10 @@ if __name__ == '__main__':
 
     if from_bson:
         bs_input.close()
+
+    # Send kill signal to workers
+    controller.send("KILL")
+    print 'send "KILL" to workers'
 
     print 'sleep to give zmq time to deliver'
     print 'total deliver %s, cost %s sec' % (count, total_cost)

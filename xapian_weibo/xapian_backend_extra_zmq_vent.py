@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_VENT_PORT
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_FLUSH_DB_SIZE, \
+        XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
 from xapian_backend import Schema, XapianSearch
 from utils import timeit
 import datetime
@@ -65,11 +66,19 @@ if __name__ == '__main__':
     sender = context.socket(zmq.PUSH)
     sender.bind("tcp://*:%s" % XAPIAN_ZMQ_VENT_PORT)
 
+    # Socket for worker control
+    controller = context.socket(zmq.PUB)
+    controller.bind("tcp://*:%s" % XAPIAN_ZMQ_CTRL_VENT_PORT)
+
     weibo_positive_negative_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_positive_negative_sentiment'),
                                                                block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
     get_results = _load_weibos_from_xapian()
     count, total_cost = send_all(get_results, sender, weibo_positive_negative_sentiment_bucket)
+
+    # Send kill signal to workers
+    controller.send("KILL")
+    print 'send "KILL" to workers'
 
     print 'sleep to give zmq time to deliver'
     print 'total deliver %s, cost %s sec' % (count, total_cost)
