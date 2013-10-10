@@ -104,4 +104,4 @@ if __name__ == '__main__':
             te = time.time()
             cost = te - ts
             ts = te
-            print '[%s] folder[%s] num indexed: %s %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
+            print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)

@@ -30,6 +30,30 @@ def _load_weibos_from_xapian():
     return get_results
 
 
+def send_all(get_results, sender, bucket):
+    count = 0
+    tb = time.time()
+    ts = tb
+    for item in get_results():
+        try:
+            sentiment = bucket.Get(str(item['_id']))
+        except KeyError:
+            sentiment = 0
+        item['sentiment'] = int(sentiment)
+
+        sender.send_json(item)
+        count += 1
+        if count % XAPIAN_FLUSH_DB_SIZE == 0:
+            te = time.time()
+            print 'deliver speed: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
+            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
+                print 'total deliver %s, cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
+            ts = te
+
+    total_cost = time.time() - tb
+    return count, total_cost
+
+
 if __name__ == '__main__':
     """
     then run 'py xapian_backend_extra_zmq_vent.py'
@@ -41,30 +65,12 @@ if __name__ == '__main__':
     sender = context.socket(zmq.PUSH)
     sender.bind("tcp://*:%s" % XAPIAN_ZMQ_VENT_PORT)
 
-    count = 0
-    ts = time.time()
-    tb = ts
-
     weibo_positive_negative_sentiment_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, 'huyue_weibo_positive_negative_sentiment'),
                                                                block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
     get_results = _load_weibos_from_xapian()
-    for item in get_results():
-        try:
-            sentiment = weibo_positive_negative_sentiment_bucket.Get(str(item['_id']))
-        except KeyError:
-            sentiment = 0
-        item['sentiment'] = int(sentiment)
+    count, total_cost = send_all(get_results, sender, weibo_positive_negative_sentiment_bucket)
 
-        sender.send_json(item)
-        count += 1
-        if count % XAPIAN_FLUSH_DB_SIZE == 0:
-            te = time.time()
-            print 'deliver cost: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
-            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
-                print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
-            ts = te
-
-    print 'sleep to give zmq time to deliver '
-    print 'until now cost %s sec' % (time.time() - tb)
+    print 'sleep to give zmq time to deliver'
+    print 'total deliver %s, cost %s sec' % (count, total_cost)
     time.sleep(10)

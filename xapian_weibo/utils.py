@@ -180,6 +180,7 @@ def log_to_stub(stub_file_dir, dbpath, db_folder, remote_stub=False):
     with FileLock(XAPIAN_INDEX_LOCK_FILE):
         today_date_str = datetime.now().date().strftime("%Y%m%d")
         stub_file = os.path.join(stub_file_dir, "%s_%s" % (dbpath, today_date_str))
+        print 'write to stub file: %s' % stub_file
         with open(stub_file, 'aw') as f:
             if remote_stub:
                 host = socket.getfqdn()

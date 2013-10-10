@@ -20,6 +20,28 @@ def load_items_from_bson(bs_filepath=BSON_FILEPATH):
     return bs_input
 
 
+def send_all(bs_input, sender):
+    count = 0
+    tb = time.time()
+    ts = tb
+    for _, item in bs_input.reads():
+        """
+        还没等work连上，就开始在发了
+        但如果work长时间没连上，zmq的后台发送队列会满，又会阻塞发送
+        """
+        sender.send_json(item)
+        count += 1
+        if count % XAPIAN_FLUSH_DB_SIZE == 0:
+            te = time.time()
+            print 'deliver speed: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
+            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
+                print 'total deliver %s, cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
+            ts = te
+
+    total_cost = time.time() - tb
+    return count, total_cost
+
+
 if __name__ == '__main__':
     """
     'py xapian_backend_zmq_vent.py -b'
@@ -39,24 +61,12 @@ if __name__ == '__main__':
     if from_bson:
         bs_input = load_items_from_bson()
 
-    count = 0
-    ts = time.time()
-    tb = ts
-
     if from_bson:
-        for _, item in bs_input.reads():
-            sender.send_json(item)
-            count += 1
-            if count % XAPIAN_FLUSH_DB_SIZE == 0:
-                te = time.time()
-                print 'deliver cost: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
-                if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
-                    print 'total deliver %s cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
-                ts = te
+        count, total_cost = send_all(bs_input, sender)
 
     if from_bson:
         bs_input.close()
 
-    print 'sleep to give zmq time to deliver '
-    print 'until now cost %s sec' % (time.time() - tb)
+    print 'sleep to give zmq time to deliver'
+    print 'total deliver %s, cost %s sec' % (count, total_cost)
     time.sleep(10)
