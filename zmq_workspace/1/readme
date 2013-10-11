@@ -1,5 +1,10 @@
-weibo
-sentiment
+schema:
+    weibo
+    sentiment
 
-python zmq_workspace/1/xapian_zmq_vent.py
-python zmq_workspace/1/xapian_zmq_work.py [-r]
+from_bson:
+    true
+
+usage:
+    python zmq_workspace/1/xapian_zmq_vent.py
+    python zmq_workspace/1/xapian_zmq_work.py [-r]
