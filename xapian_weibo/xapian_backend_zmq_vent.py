@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from argparse import ArgumentParser
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
-    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
+    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, FROM_BSON
 from index_utils import load_items_from_bson, send_all
 from xapian_backend import Schema
 import sys
@@ -25,7 +24,7 @@ if SCHEMA_VERSION in [3]:
 
 if __name__ == '__main__':
     """
-    'py xapian_backend_zmq_vent.py -b'
+    'py xapian_backend_zmq_vent.py'
     """
 
     context = zmq.Context()
@@ -38,10 +37,7 @@ if __name__ == '__main__':
     controller = context.socket(zmq.PUB)
     controller.bind("tcp://*:%s" % XAPIAN_ZMQ_CTRL_VENT_PORT)
 
-    parser = ArgumentParser()
-    parser.add_argument('-b', '--from_bson', action='store_true', help='from bson')
-    args = parser.parse_args(sys.argv[1:])
-    from_bson = args.from_bson
+    from_bson = FROM_BSON
 
     load_origin_data_func = None
     if from_bson:

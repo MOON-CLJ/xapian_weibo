@@ -30,7 +30,7 @@ def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]
         还没等work连上，就开始在发了
         但如果work长时间没连上，zmq的后台发送队列会满，又会阻塞发送
         """
-        for func in fill_fields_funcs:
+        for func in fill_field_funcs:
             func(item, extra_source)
         sender.send_json(item)
         count += 1

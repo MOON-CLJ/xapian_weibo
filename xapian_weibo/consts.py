@@ -22,28 +22,30 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
     XAPIAN_EXTRA_FIELD = 'sentiment'
 
 PROD_VENV = 1
+FROM_BSON = 1
 if PROD_VENV:
     XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
     XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
     XAPIAN_ZMQ_VENT_HOST = '219.224.135.61'  # 分发机器的ip
     XAPIAN_FLUSH_DB_SIZE = 20000
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 3600  # 1 hour
-    if XAPIAN_INDEX_SCHEMA_VERSION == 2:
-        BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
-    elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
-        BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_user.bson'
-    elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
-        BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
-
+    if FROM_BSON:
+        if XAPIAN_INDEX_SCHEMA_VERSION == 2:
+            BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
+        elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
+            BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_user.bson'
+        elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
+            BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
 else:
     XAPIAN_DATA_DIR = '/home/arthas/dev/xapian_weibo/data'
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/xapian_weibo/stub'
     XAPIAN_ZMQ_VENT_HOST = 'localhost'
     XAPIAN_FLUSH_DB_SIZE = 2000
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 0  # immediately
-    if XAPIAN_INDEX_SCHEMA_VERSION == 2:
-        BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
-    elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
-        BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_user.bson'
-    elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
-        BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
+    if FROM_BSON:
+        if XAPIAN_INDEX_SCHEMA_VERSION == 2:
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
+        elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_user.bson'
+        elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
