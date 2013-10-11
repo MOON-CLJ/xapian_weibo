@@ -7,7 +7,6 @@ from consts import XAPIAN_DATA_DIR, XAPIAN_STUB_FILE_DIR
 from datetime import datetime
 import xapian
 import msgpack
-import sys
 import os
 
 
