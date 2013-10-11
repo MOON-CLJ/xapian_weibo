@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
-    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, FROM_BSON
+    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
 from index_utils import load_items_from_bson, send_all
 from xapian_backend import Schema
-import sys
 import time
 import zmq
 
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
-if SCHEMA_VERSION in [3]:
+if SCHEMA_VERSION in [3, 4, 5]:
     import os
     import leveldb
     from consts import XAPIAN_EXTRA_FIELD
@@ -37,6 +36,7 @@ if __name__ == '__main__':
     controller = context.socket(zmq.PUB)
     controller.bind("tcp://*:%s" % XAPIAN_ZMQ_CTRL_VENT_PORT)
 
+    from consts import FROM_BSON
     from_bson = FROM_BSON
 
     load_origin_data_func = None
@@ -44,7 +44,7 @@ if __name__ == '__main__':
         bs_input = load_items_from_bson()
         load_origin_data_func = bs_input.reads
 
-    if SCHEMA_VERSION in [3]:
+    if SCHEMA_VERSION in [3, 4, 5]:
         extra_source = {}
         extra_source['bucket'] = leveldb_bucket
         extra_source['extra_field'] = XAPIAN_EXTRA_FIELD
