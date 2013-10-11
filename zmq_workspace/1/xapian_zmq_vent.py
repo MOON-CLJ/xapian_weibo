@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../xapian_weibo')
+sys.path.append(ab_path)
+
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
 from index_utils import load_items_from_bson, send_all

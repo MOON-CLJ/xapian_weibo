@@ -44,8 +44,8 @@ else:
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 0  # immediately
     if FROM_BSON:
         if XAPIAN_INDEX_SCHEMA_VERSION == 2:
-            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_weibo.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
-            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_user.bson'
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_user.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
-            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/test/master_timeline_weibo.bson'
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_weibo.bson'

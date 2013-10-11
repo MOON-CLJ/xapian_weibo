@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../xapian_weibo')
+sys.path.append(ab_path)
+
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH
 from index_utils import index_forever
@@ -7,8 +12,6 @@ from xapian_index import XapianIndex
 
 from argparse import ArgumentParser
 import zmq
-import sys
-import os
 
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 
