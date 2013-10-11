@@ -391,7 +391,7 @@ def _stub_database(stub):
     return database
 
 
-def _index_field(field, document, item, schema_version, schema, termgen):
+def _index_field(field, document, item, schema_version, schema, term_gen):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
     field_name = field['field_name']
     # 可选term在pre_func里处理
@@ -405,8 +405,8 @@ def _index_field(field, document, item, schema_version, schema, termgen):
     elif field_name == 'text':
         text = item['text'].encode('utf-8')
         tokens = cut(s, text)
-        termgen.set_document(document)
-        termgen.index_text_without_positions(' '.join(tokens), 1, prefix)
+        term_gen.set_document(document)
+        term_gen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 
 class InvalidIndexError(Exception):

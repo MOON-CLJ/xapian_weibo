@@ -11,17 +11,19 @@ import os
 
 
 class XapianIndex(object):
-    def __init__(self, dbpath, schema_version, pid, remote_stub):
+    def __init__(self, dbpath, schema_version, remote_stub):
         self.dbpath = dbpath
         self.remote_stub = remote_stub
         self.schema_version = schema_version
         self.schema = getattr(Schema, 'v%s' % schema_version)
         today_date_str = datetime.now().date().strftime("%Y%m%d")
-        self.db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (today_date_str, dbpath, pid))
+        pid = os.getpid()
+        db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (today_date_str, dbpath, pid))
+        self.db_folder = db_folder
+        self.db = _database(db_folder, writable=True)
         self.s = load_scws()
-        self.db = _database(self.db_folder, writable=True)
 
-        self.termgen = xapian.TermGenerator()
+        self.term_gen = xapian.TermGenerator()
         self.iter_keys = self.schema['origin_data_iter_keys']
         self.pre_func = self.schema.get('pre_func', {})
 
@@ -46,7 +48,7 @@ class XapianIndex(object):
         self.db.add_document(document)
 
     def index_field(self, field, document, item, schema_version):
-        _index_field(field, document, item, schema_version, self.schema, self.termgen)
+        _index_field(field, document, item, schema_version, self.schema, self.term_gen)
 
     def _log_to_stub(self):
         log_to_stub(XAPIAN_STUB_FILE_DIR, self.dbpath, self.db_folder, remote_stub=self.remote_stub)
