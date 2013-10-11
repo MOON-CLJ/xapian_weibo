@@ -75,6 +75,9 @@ class Schema:
         'origin_data_iter_keys': ['_id'],
         'index_item_iter_keys': ['user', 'sentiment'],
         'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count'],
+        'pre_func': {
+            'user': lambda x: x['id'] if x else 0,
+        },
         'obj_id': '_id',
         # 用于去重的value no(column)
         'collapse_valueno': 3,

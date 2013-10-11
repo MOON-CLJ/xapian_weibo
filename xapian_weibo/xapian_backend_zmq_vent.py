@@ -2,45 +2,25 @@
 
 from argparse import ArgumentParser
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
-        XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, \
-        XAPIAN_FLUSH_DB_SIZE, BSON_FILEPATH
-from bs_input import KeyValueBSONInput
+    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
+from index_utils import load_items_from_bson, send_all
 from xapian_backend import Schema
 import sys
 import time
 import zmq
 
-XAPIAN_FLUSH_DB_SIZE = XAPIAN_FLUSH_DB_SIZE * 10
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
-
-
-def load_items_from_bson(bs_filepath=BSON_FILEPATH):
-    print 'bson file mode: 从备份的BSON文件中加载微博'
-    bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
-    return bs_input
-
-
-def send_all(bs_input, sender):
-    count = 0
-    tb = time.time()
-    ts = tb
-    for _, item in bs_input.reads():
-        """
-        还没等work连上，就开始在发了
-        但如果work长时间没连上，zmq的后台发送队列会满，又会阻塞发送
-        """
-        sender.send_json(item)
-        count += 1
-        if count % XAPIAN_FLUSH_DB_SIZE == 0:
-            te = time.time()
-            print 'deliver speed: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE)
-            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
-                print 'total deliver %s, cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
-            ts = te
-
-    total_cost = time.time() - tb
-    return count, total_cost
+if SCHEMA_VERSION in [3]:
+    import os
+    import leveldb
+    from consts import XAPIAN_EXTRA_FIELD
+    from index_utils import fill_field_from_leveldb
+    LEVELDBPATH = '/home/arthas/leveldb'
+    if SCHEMA_VERSION == 3:
+        leveldb_dbname = 'huyue_weibo_positive_negative_sentiment'
+    leveldb_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, leveldb_dbname),
+                                     block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
 
 if __name__ == '__main__':
@@ -59,15 +39,22 @@ if __name__ == '__main__':
     controller.bind("tcp://*:%s" % XAPIAN_ZMQ_CTRL_VENT_PORT)
 
     parser = ArgumentParser()
-    parser.add_argument('-b', '--bson', action='store_true', help='from bson')
+    parser.add_argument('-b', '--from_bson', action='store_true', help='from bson')
     args = parser.parse_args(sys.argv[1:])
-    from_bson = args.bson
+    from_bson = args.from_bson
 
+    load_origin_data_func = None
     if from_bson:
         bs_input = load_items_from_bson()
+        load_origin_data_func = bs_input.reads
 
-    if from_bson:
-        count, total_cost = send_all(bs_input, sender)
+    if SCHEMA_VERSION in [3]:
+        extra_source = {}
+        extra_source['bucket'] = leveldb_bucket
+        extra_source['extra_field'] = XAPIAN_EXTRA_FIELD
+        count, total_cost = send_all(load_origin_data_func, sender, extra_source, fill_field_funcs=[fill_field_from_leveldb])
+    else:
+        count, total_cost = send_all(load_origin_data_func, sender)
 
     if from_bson:
         bs_input.close()
