@@ -8,3 +8,6 @@ usage:
     python zmq_workspace/2/xapian_zmq_vent.py
     ## todo
     python zmq_workspace/2/xapian_zmq_work.py
+
+limit:
+    1 .. 1

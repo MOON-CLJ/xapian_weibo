@@ -10,7 +10,7 @@ import zmq
 
 
 def load_items_from_bson(bs_filepath=BSON_FILEPATH):
-    print 'bson file mode: 从备份的BSON文件中加载微博'
+    print 'bson file mode: 从备份的BSON文件中加载数据'
     bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
     return bs_input
 
@@ -59,7 +59,7 @@ def index_forever(xapian_indexer, receiver, controller, poller):
         socks = dict(poller.poll())
         if socks.get(receiver) == zmq.POLLIN:
             item = receiver.recv_json()
-            xapian_indexer.add(item)
+            xapian_indexer.add_or_update(item)
             count += 1
             if count % XAPIAN_FLUSH_DB_SIZE == 0:
                 te = time.time()
@@ -80,3 +80,8 @@ def index_forever(xapian_indexer, receiver, controller, poller):
         # Any waiting controller command acts as 'KILL'
         if socks.get(controller) == zmq.POLLIN:
             receive_kill = True
+
+
+class InvalidSchemaError(Exception):
+    """Raised when schema not match."""
+    pass

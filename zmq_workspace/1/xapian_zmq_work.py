@@ -7,7 +7,7 @@ sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH
-from index_utils import index_forever
+from index_utils import index_forever, InvalidSchemaError
 from xapian_index import XapianIndex
 
 from argparse import ArgumentParser
@@ -43,7 +43,8 @@ if __name__ == '__main__':
     remote_stub = args.remote_stub
 
     dbpath = XAPIAN_DB_PATH
-    pid = os.getpid()
-    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, pid, remote_stub)
+    if SCHEMA_VERSION not in [2, 3]:
+        raise InvalidSchemaError()
+    xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, remote_stub)
 
     index_forever(xapian_indexer, receiver, controller, poller)

@@ -26,6 +26,8 @@ FROM_BSON = 1
 if PROD_VENV:
     XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
     XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
+    if XAPIAN_INDEX_SCHEMA_VERSION == 1:
+        XAPIAN_DB_FOLDER_PREFIX = '/var/lib/xapian_weibo/20130000'
     XAPIAN_ZMQ_VENT_HOST = '219.224.135.61'  # 分发机器的ip
     XAPIAN_FLUSH_DB_SIZE = 20000
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 3600  # 1 hour
@@ -39,6 +41,8 @@ if PROD_VENV:
 else:
     XAPIAN_DATA_DIR = '/home/arthas/dev/xapian_weibo/data'
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/xapian_weibo/stub'
+    if XAPIAN_INDEX_SCHEMA_VERSION == 1:
+        XAPIAN_DB_FOLDER_PREFIX = '/home/arthas/dev/xapian_weibo/data/20130000'
     XAPIAN_ZMQ_VENT_HOST = 'localhost'
     XAPIAN_FLUSH_DB_SIZE = 2000
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 0  # immediately
