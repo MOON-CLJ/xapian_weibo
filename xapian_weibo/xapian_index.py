@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
-    InvalidIndexError, _index_field
-from utils import load_scws, log_to_stub
+    DOCUMENT_CUSTOM_TERM_PREFIX, InvalidIndexError
+from utils import load_scws, cut, log_to_stub
 from consts import XAPIAN_DATA_DIR, XAPIAN_STUB_FILE_DIR
 from datetime import datetime
 import xapian
@@ -25,7 +25,6 @@ class XapianIndex(object):
             db_folder = os.path.join(XAPIAN_DATA_DIR, '%s/_%s_%s' % (today_date_str, dbpath, pid))
         self.db_folder = db_folder
         self.db = _database(db_folder, writable=True)
-        self.s = load_scws()
 
         self.term_gen = xapian.TermGenerator()
         self.iter_keys = self.schema['origin_data_iter_keys']
@@ -65,3 +64,46 @@ class XapianIndex(object):
         if self.schema_version != 1:
             self._log_to_stub()
         print 'total index', self.document_count()
+
+
+def _marshal_value(value, pre_func=None):
+    """
+    Private utility method that converts Python values to a string for Xapian values.
+    """
+    if pre_func:
+        value = pre_func(value)
+    # value 默认为int, long, float
+    value = xapian.sortable_serialise(value)
+    return value
+
+
+def _marshal_term(term, pre_func=None):
+    """
+    Private utility method that converts Python terms to a string for Xapian terms.
+    """
+    if pre_func:
+        term = pre_func(term)
+    if isinstance(term, (int, long)):
+        term = str(term)
+    return term
+
+
+s = load_scws()
+
+
+def _index_field(field, document, item, schema_version, schema, term_gen):
+    prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
+    field_name = field['field_name']
+    # 可选term在pre_func里处理
+    if field_name in schema['index_item_iter_keys']:
+        term = _marshal_term(item.get(field_name), schema.get('pre_func', {}).get(field_name))
+        document.add_term(prefix + term)
+    # 可选value在pre_func里处理
+    elif field_name in schema['index_value_iter_keys']:
+        value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))
+        document.add_value(field['column'], value)
+    elif field_name == 'text':
+        text = item['text'].encode('utf-8')
+        tokens = cut(s, text)
+        term_gen.set_document(document)
+        term_gen.index_text_without_positions(' '.join(tokens), 1, prefix)

@@ -3,18 +3,16 @@
 
 from consts import XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION, XAPIAN_REMOTE_OPEN_TIMEOUT
 from query_base import parse_query
-from utils import load_scws, cut, local2unix
+from utils import local2unix
 import os
 import xapian
 import msgpack
 
 
 SCHEMA_VERSION = XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
+
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
-
-s = load_scws()
-
 
 class Schema:
     v2 = {
@@ -323,28 +321,6 @@ class XapianSearch(object):
         ).size()
 
 
-def _marshal_value(value, pre_func=None):
-    """
-    Private utility method that converts Python values to a string for Xapian values.
-    """
-    if pre_func:
-        value = pre_func(value)
-    # value 默认为int, long, float
-    value = xapian.sortable_serialise(value)
-    return value
-
-
-def _marshal_term(term, pre_func=None):
-    """
-    Private utility method that converts Python terms to a string for Xapian terms.
-    """
-    if pre_func:
-        term = pre_func(term)
-    if isinstance(term, (int, long)):
-        term = str(term)
-    return term
-
-
 def _database(folder, writable=False, refresh=False):
     """
     Private method that returns a xapian.Database for use.
@@ -389,24 +365,6 @@ def _stub_database(stub):
     database = reduce(merge,
                       map(create, [p for p in dbpaths]))
     return database
-
-
-def _index_field(field, document, item, schema_version, schema, term_gen):
-    prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
-    field_name = field['field_name']
-    # 可选term在pre_func里处理
-    if field_name in schema['index_item_iter_keys']:
-        term = _marshal_term(item.get(field_name), schema.get('pre_func', {}).get(field_name))
-        document.add_term(prefix + term)
-    # 可选value在pre_func里处理
-    elif field_name in schema['index_value_iter_keys']:
-        value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))
-        document.add_value(field['column'], value)
-    elif field_name == 'text':
-        text = item['text'].encode('utf-8')
-        tokens = cut(s, text)
-        term_gen.set_document(document)
-        term_gen.index_text_without_positions(' '.join(tokens), 1, prefix)
 
 
 class InvalidIndexError(Exception):
