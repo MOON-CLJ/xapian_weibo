@@ -21,6 +21,7 @@ s = XapianSearch(path='../data/', name='master_timeline_weibo')
 # 如果需要返回terms，请一一指定需要的字段，并包括terms
 # 简单示例如下
 
+"""
 count, get_results = s.search(query={'text': [u'中国'], 'user': 1217743083, 'timestamp': {'$gt': 0, '$lt': 1334450340}}, sort_by=['-timestamp'], fields=['text', 'timestamp', 'user', 'terms', '_id'])
 
 print 'query1:'
@@ -35,7 +36,6 @@ for r in get_results():
 
 print 'hits: %s' % count
 
-"""
 print 'query2:'
 count, get_results = s.search(query={'_id': 72447122}, fields=['text', 'timestamp', 'user', 'terms', '_id'])
 print count
@@ -97,6 +97,12 @@ print r['text']
 print r['user']
 print r['terms']
 """
+
+
+print 'query6:'
+all_terms = s.iter_all_xapian_terms(field='_id')
+for i in all_terms:
+    print i
 
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值

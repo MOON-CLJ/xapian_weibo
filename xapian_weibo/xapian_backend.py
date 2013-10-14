@@ -160,6 +160,18 @@ class XapianSearch(object):
                     item = r
                 yield item
 
+    def iter_all_xapian_terms(field):
+        db = self.database
+        if field = '_id':
+            prefix = DOCUMENT_ID_TERM_PREFIX
+        else:
+            prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field.upper()
+
+        term = db.allterms_begin(prefix)
+        while term != db.allterms_end(prefix):
+            yield term
+            term.next()
+
     @fields_not_empty
     def search_by_id(self, id_, fields=None):
         db = self.database
