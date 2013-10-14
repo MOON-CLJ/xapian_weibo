@@ -59,6 +59,8 @@ class Schema:
             {'field_name': 'name', 'column': 0, 'type': 'term'},
             {'field_name': 'location', 'column': 1, 'type': 'term'},
             {'field_name': 'province', 'column': 2, 'type': 'term'},
+            {'field_name': 'gender', 'column': 9, 'type': 'term'},
+            {'field_name': 'verified_type', 'column': 10, 'type': 'term'},
             # value
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'followers_count', 'column': 4, 'type': 'long'},

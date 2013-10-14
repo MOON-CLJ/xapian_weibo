@@ -21,7 +21,7 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
     # extra
     XAPIAN_EXTRA_FIELD = 'sentiment'
 
-PROD_VENV = 1
+PROD_VENV = 0
 FROM_BSON = 1
 if PROD_VENV:
     XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
