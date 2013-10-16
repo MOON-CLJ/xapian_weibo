@@ -205,10 +205,6 @@ class XapianSearch(object):
         return mset.size(), result_generator
 
     def _extract_item(self, doc, fields):
-        if fields == ['terms']:
-            item = {}
-            item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
-            return item
         r = msgpack.unpackb(self._get_document_data(self.database, doc))
         if fields is not None:
             item = {}
