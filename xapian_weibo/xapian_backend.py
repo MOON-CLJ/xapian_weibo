@@ -14,6 +14,7 @@ SCHEMA_VERSION = XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
 DOCUMENT_ID_TERM_PREFIX = 'M'
 DOCUMENT_CUSTOM_TERM_PREFIX = 'X'
 
+
 class Schema:
     v2 = {
         'db': 'master_timeline',
@@ -145,22 +146,7 @@ class XapianSearch(object):
                 break
 
             doc = db.get_document(plitem.docid)
-            if fields == ['terms']:
-                item = {}
-                item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
-                yield item
-            else:
-                r = msgpack.unpackb(self._get_document_data(db, doc))
-                if fields is not None:
-                    item = {}
-                    for field in fields:
-                        if field == 'terms':
-                            item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
-                        else:
-                            item[field] = r.get(field)
-                else:
-                    item = r
-                yield item
+            yield self._extract_item(doc, fields)
 
     def iter_all_xapian_terms(self, field):
         db = self.database
@@ -185,22 +171,7 @@ class XapianSearch(object):
             return
 
         doc = db.get_document(plitem.docid)
-        if fields == ['terms']:
-            item = {}
-            item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
-            return item
-        else:
-            r = msgpack.unpackb(self._get_document_data(db, doc))
-            if fields is not None:
-                item = {}
-                for field in fields:
-                    if field == 'terms':
-                        item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
-                    else:
-                        item[field] = r.get(field)
-            else:
-                item = r
-            return item
+        return self._extract_item(doc, fields)
 
     @fields_not_empty
     def search(self, query=None, sort_by=None, start_offset=0,
@@ -228,26 +199,27 @@ class XapianSearch(object):
         mset.fetch()  # 提前fetch，加快remote访问速度
 
         def result_generator():
-            if fields == ['terms']:
-                for match in mset:
-                    item = {}
-                    item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
-                    yield item
-            else:
-                for match in mset:
-                    r = msgpack.unpackb(self._get_document_data(db, match.document))
-                    if fields is not None:
-                        item = {}
-                        for field in fields:
-                            if field == 'terms':
-                                item['terms'] = {term.term[5:]: term.wdf for term in match.document.termlist() if term.term.startswith('XTEXT')}
-                            else:
-                                item[field] = r.get(field)
-                    else:
-                        item = r
-                    yield item
+            for match in mset:
+                yield self._extract_item(match.document, fields)
 
         return mset.size(), result_generator
+
+    def _extract_item(self, doc, fields):
+        if fields == ['terms']:
+            item = {}
+            item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
+            return item
+        r = msgpack.unpackb(self._get_document_data(self.database, doc))
+        if fields is not None:
+            item = {}
+            for field in fields:
+                if field == 'terms':
+                    item['terms'] = {term.term[5:]: term.wdf for term in doc.termlist() if term.term.startswith('XTEXT')}
+                else:
+                    item[field] = r.get(field)
+        else:
+            item = r
+        return item
 
     def _set_sort_by(self, enquire, sort_by, remote=False):
         if remote:
