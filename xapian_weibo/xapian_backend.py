@@ -94,6 +94,34 @@ class Schema:
         ],
     }
 
+    v4 = {
+        'origin_data_iter_keys': ['_id','domain'], 
+        'index_item_iter_keys': ['name', 'location', 'province'],
+        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'obj_id': '_id',
+        'pre_func': {
+            'created_at': lambda x: local2unix(x) if x else 0,
+        },
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'name', 'column': 0, 'type': 'term'},
+            {'field_name': 'location', 'column': 1, 'type': 'term'},
+            {'field_name': 'province', 'column': 2, 'type': 'term'},
+            {'field_name': 'domain', 'column': 3, 'type': 'term'},
+            # value
+            {'field_name': '_id', 'column': 4, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'statuses_count', 'column': 6, 'type': 'long'},
+            {'field_name': 'friends_count', 'column': 7, 'type': 'long'},
+            {'field_name': 'bi_followers_count', 'column': 8, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 9, 'type': 'long'},
+        ],
+    }
+
+
 
 def fields_not_empty(func):
     def _(*args, **kwargs):

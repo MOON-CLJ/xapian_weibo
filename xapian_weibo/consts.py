@@ -20,6 +20,11 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
     XAPIAN_ZMQ_CTRL_VENT_PORT = 5562
     # extra
     XAPIAN_EXTRA_FIELD = 'sentiment'
+elif XAPIAN_INDEX_SCHEMA_VERSION == 4:
+    XAPIAN_DB_PATH = 'master_timeline_domain'
+    XAPIAN_ZMQ_VENT_PORT = 5563
+    XAPIAN_ZMQ_CTRL_VENT_PORT = 5564
+    XAPIAN_EXTRA_FIELD = 'domain'
 
 PROD_VENV = 0
 FROM_BSON = 1
@@ -33,11 +38,13 @@ if PROD_VENV:
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 3600  # 1 hour
     if FROM_BSON:
         if XAPIAN_INDEX_SCHEMA_VERSION == 2:
-            BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
+            BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_weibo.bson'#新的bson文件路径
         elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
-            BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_user.bson'
+            BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_user.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
-            BSON_FILEPATH = '/home/arthas/mongodumps/20130516/master_timeline/master_timeline_weibo.bson'
+            BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_weibo.bson'
+        elif XAPIAN_INDEX_SCHEMA_VERSION == 4:
+            BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_user.bson'
 else:
     XAPIAN_DATA_DIR = '/home/arthas/dev/xapian_weibo/data'
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/xapian_weibo/stub'
@@ -53,3 +60,5 @@ else:
             BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_user.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
             BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_weibo.bson'
+        elif XAPIAN_INDEX_SCHEMA_VERSION == 4:
+            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_user.bson'

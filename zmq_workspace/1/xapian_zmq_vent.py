@@ -22,6 +22,8 @@ if SCHEMA_VERSION in [3, 4, 5]:
     LEVELDBPATH = '/home/arthas/leveldb'
     if SCHEMA_VERSION == 3:
         leveldb_dbname = 'huyue_weibo_positive_negative_sentiment'
+    elif SCHEMA_VERSION == 4:
+        leveldb_dbname = 'linhao_global_user_field'
     leveldb_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, leveldb_dbname),
                                      block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 

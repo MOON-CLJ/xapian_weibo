@@ -98,6 +98,10 @@ def _index_field(field, document, item, schema_version, schema, term_gen):
     if field_name in schema['index_item_iter_keys']:
         term = _marshal_term(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_term(prefix + term)
+    elif field_name == 'domain':
+        for t in item.get(field_name).split(','):
+            term = _marshal_term(t, schema.get('pre_func', {}).get(field_name))
+            document.add_term(prefix + term)
     # 可选value在pre_func里处理
     elif field_name in schema['index_value_iter_keys']:
         value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))

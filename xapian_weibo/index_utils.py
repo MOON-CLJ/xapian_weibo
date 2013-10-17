@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from consts import FROM_BSON, XAPIAN_FLUSH_DB_SIZE, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL
+from consts import FROM_BSON, XAPIAN_FLUSH_DB_SIZE, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL, XAPIAN_INDEX_SCHEMA_VERSION
 if FROM_BSON:
     from consts import BSON_FILEPATH
 from bs_input import KeyValueBSONInput
@@ -15,12 +15,17 @@ def load_items_from_bson(bs_filepath=BSON_FILEPATH):
     return bs_input
 
 
-def fill_field_from_leveldb(item, extra_source):
+def fill_field_from_leveldb(item, extra_source, schema_version=XAPIAN_INDEX_SCHEMA_VERSION):
     try:
         value = extra_source.get('bucket').Get(str(item['_id']))
     except KeyError:
         value = 0
-    item[extra_source.get('extra_field')] = int(value)
+    if schema_version == 3:
+        item[extra_source.get('extra_field')] = int(value)
+    elif schema_version == 4:
+        item[extra_source.get('extra_field')] = str(value)
+    else:
+        pass
 
 
 def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]):
