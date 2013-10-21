@@ -19,11 +19,11 @@ def fill_field_from_leveldb(item, extra_source, schema_version=XAPIAN_INDEX_SCHE
     try:
         value = extra_source.get('bucket').Get(str(item['_id']))
     except KeyError:
-        value = 0
+        value = "0"
     if schema_version == 3:
         item[extra_source.get('extra_field')] = int(value)
     elif schema_version == 4:
-        item[extra_source.get('extra_field')] = str(value)
+        item[extra_source.get('extra_field')] = value
 
 
 def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]):
