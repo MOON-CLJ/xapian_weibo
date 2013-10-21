@@ -331,12 +331,14 @@ def _stub_database(stub):
     f = open(stub, 'U')
     dbpaths = f.readlines()
     f.close()
+    dbpaths = [p.strip() for p in dbpaths]
     if not dbpaths[0].startswith('remote'):
         # local database
         database = xapian.open_stub(stub)
         return database
 
-    dbpaths = [p.lstrip('remote ssh ') for p in dbpaths]
+    # 默认stub里要么全是remote，要么全不是，去掉"ssh remote "
+    dbpaths = [p[11:] for p in dbpaths]
 
     def create(dbpath):
         return xapian.remote_open('ssh', dbpath, XAPIAN_REMOTE_OPEN_TIMEOUT)
