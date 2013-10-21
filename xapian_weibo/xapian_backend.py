@@ -95,29 +95,23 @@ class Schema:
     }
 
     v4 = {
-        'origin_data_iter_keys': ['_id','domain'], 
-        'index_item_iter_keys': ['name', 'location', 'province'],
-        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'origin_data_iter_keys': ['_id', 'domain', 'province', 'city', 'verified', 'name', 'friends_count',
+                                  'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
+                                  'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
+        'index_item_iter_keys': [],
+        'index_value_iter_keys': ['_id'],
         'obj_id': '_id',
         'pre_func': {
-            'created_at': lambda x: local2unix(x) if x else 0,
+            'created_at': lambda x: local2unix(x) if x else 0,#针对data？感觉是针对value
         },
         'obj_id': '_id',
         # 用于去重的value no(column)
-        'collapse_valueno': 3,
+        'collapse_valueno': 0,
         'idx_fields': [
             # term
-            {'field_name': 'name', 'column': 0, 'type': 'term'},
-            {'field_name': 'location', 'column': 1, 'type': 'term'},
-            {'field_name': 'province', 'column': 2, 'type': 'term'},
-            {'field_name': 'domain', 'column': 3, 'type': 'term'},
+            {'field_name': 'domain', 'column': 1, 'type': 'term'},
             # value
-            {'field_name': '_id', 'column': 4, 'type': 'long'},
-            {'field_name': 'followers_count', 'column': 5, 'type': 'long'},
-            {'field_name': 'statuses_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'friends_count', 'column': 7, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 8, 'type': 'long'},
-            {'field_name': 'created_at', 'column': 9, 'type': 'long'},
+            {'field_name': '_id', 'column': 0, 'type': 'long'},
         ],
     }
 

@@ -24,8 +24,6 @@ def fill_field_from_leveldb(item, extra_source, schema_version=XAPIAN_INDEX_SCHE
         item[extra_source.get('extra_field')] = int(value)
     elif schema_version == 4:
         item[extra_source.get('extra_field')] = str(value)
-    else:
-        pass
 
 
 def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]):
