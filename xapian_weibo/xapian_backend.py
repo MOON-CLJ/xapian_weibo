@@ -94,6 +94,28 @@ class Schema:
         ],
     }
 
+    v4 = {
+        'origin_data_iter_keys': ['_id', 'domain', 'province', 'city', 'verified', 'name', 'friends_count',
+                                  'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
+                                  'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
+        'index_item_iter_keys': [],
+        'index_value_iter_keys': ['_id'],
+        'obj_id': '_id',
+        'pre_func': {
+            'created_at': lambda x: local2unix(x) if x else 0,#针对data？感觉是针对value
+        },
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 0,
+        'idx_fields': [
+            # term
+            {'field_name': 'domain', 'column': 1, 'type': 'term'},
+            # value
+            {'field_name': '_id', 'column': 0, 'type': 'long'},
+        ],
+    }
+
+
 
 def fields_not_empty(func):
     def _(*args, **kwargs):
