@@ -41,12 +41,12 @@ for r in get_results():
 print 'hits: %s' % count
 """
 
+print "query3:"
+
 stub = '/home/arthas/dev/xapian_weibo/stub/master_timeline_weibo_20130929'
-s = XapianSearch(stub=stub)
-results =  s.iter_all_docs()
+s = XapianSearch(stub=stub, include_remote=True)
+results = s.iter_all_docs()
 count = 0
 for r in results:
     count += 1
 print 'hits: ', count
-
-print "query3:"

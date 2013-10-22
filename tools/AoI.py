@@ -80,7 +80,7 @@ class UserField():
                     'timestamp': {'$gt': self.tb, '$lt': self.te}
                 },
                 sort_by=['timestamp'],
-                fields=['user', 'terms', 'retweeted_status'])  # search for seed users' words
+                fields=['terms', 'retweeted_status'])  # search for seed users' words
             if count == 0:
                 self.withoutstatus += 1
             for r in get_results():
@@ -91,7 +91,7 @@ class UserField():
 
                 # get originated tweets
                 if r['retweeted_status'] is not None:
-                    rr = xapian_search_weibo.search_by_id(r['retweeted_status'], fields=['user', 'terms'])
+                    rr = xapian_search_weibo.search_by_id(r['retweeted_status'], fields=['terms'])
                     if not rr:
                         continue
                     for t1 in rr['terms'].iterkeys():
