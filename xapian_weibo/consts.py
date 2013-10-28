@@ -38,7 +38,7 @@ if PROD_VENV:
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 3600  # 1 hour
     if FROM_BSON:
         if XAPIAN_INDEX_SCHEMA_VERSION == 2:
-            BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_weibo.bson'#新的bson文件路径
+            BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_weibo.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
             BSON_FILEPATH = '/home/arthas/mongodumps/20131008/master_timeline/master_timeline_user.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
