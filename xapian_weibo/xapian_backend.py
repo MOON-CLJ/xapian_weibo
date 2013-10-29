@@ -100,9 +100,8 @@ class Schema:
                                   'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': [],
         'index_value_iter_keys': ['_id'],
-        'obj_id': '_id',
         'pre_func': {
-            'created_at': lambda x: local2unix(x) if x else 0,#针对data？感觉是针对value
+            'created_at': lambda x: local2unix(x) if x else 0,
         },
         'obj_id': '_id',
         # 用于去重的value no(column)
@@ -114,7 +113,6 @@ class Schema:
             {'field_name': '_id', 'column': 0, 'type': 'long'},
         ],
     }
-
 
 
 def fields_not_empty(func):
@@ -160,10 +158,10 @@ class XapianSearch(object):
     def iter_all_docs(self, fields=None):
         db = self.database
         match_all = ""
-        postlist = db.postlist(match_all)
+        postlist_iter = db.postlist(match_all)
         while 1:
             try:
-                plitem = postlist.next()
+                plitem = postlist_iter.next()
             except StopIteration:
                 break
 
