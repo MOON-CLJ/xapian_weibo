@@ -158,10 +158,10 @@ class XapianSearch(object):
     def iter_all_docs(self, fields=None):
         db = self.database
         match_all = ""
-        postlist = db.postlist(match_all)
+        postlist_iter = db.postlist(match_all)
         while 1:
             try:
-                plitem = postlist.next()
+                plitem = postlist_iter.next()
             except StopIteration:
                 break
 
