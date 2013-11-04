@@ -347,6 +347,7 @@ def _database(folder, writable=False, refresh=False):
     return database
 
 
+"""
 def _stub_database(stub):
     f = open(stub, 'U')
     dbpaths = f.readlines()
@@ -369,6 +370,12 @@ def _stub_database(stub):
 
     database = reduce(merge,
                       map(create, [p for p in dbpaths]))
+    return database
+"""
+
+
+def _stub_database(stub):
+    database = xapian.open_stub(stub)
     return database
 
 
