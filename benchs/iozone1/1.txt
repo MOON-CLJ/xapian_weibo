@@ -1,0 +1,40 @@
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.397 $
+		Compiled for 64 bit mode.
+		Build: linux-AMD64 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer.
+	             Ben England.
+
+	Run began: Wed Nov  6 10:19:49 2013
+
+	Record Size 512 KB
+	File size set to 512000 KB
+	No retest option selected
+	Setting no_unlink
+	O_DIRECT feature enabled
+	Command line used: iozone -t 8 -i 0 -r 512k -s 500M -+n -w -I
+	Output is in Kbytes/sec
+	Time Resolution = 0.000001 seconds.
+	Processor cache size set to 1024 Kbytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 8 processes
+	Each process writes a 512000 Kbyte file in 512 Kbyte records
+
+	Children see throughput for  8 initial writers 	=   18667.10 KB/sec
+	Parent sees throughput for  8 initial writers 	=   17952.63 KB/sec
+	Min throughput per process 			=    2270.19 KB/sec 
+	Max throughput per process 			=    2428.20 KB/sec
+	Avg throughput per process 			=    2333.39 KB/sec
+	Min xfer 					=  479232.00 KB
+
+
+
+iozone test complete.
