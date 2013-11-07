@@ -23,6 +23,9 @@ search
 
 查询条件
 =======
+begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2013, 1, 15).timetuple())
+
 query_dict = {
     'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
     '$not': {'retweeted_status': '0'}
