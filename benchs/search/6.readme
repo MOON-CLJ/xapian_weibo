@@ -1,0 +1,36 @@
+机器配置
+=======
+arthas
+
+本地或远程配置
+=============
+本地database tcp访问
+
+访问到的数据文件夹
+=================
+/home/arthas/dev/xapian_weibo/data/20130616/_master_timeline_weibo_20043
+
+cache
+=====
+第二次访问有cache
+
+网络条件
+=======
+
+测试接口
+=======
+search
+
+查询条件
+=======
+begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
+end_ts1 = time.mktime(datetime.datetime(2013, 1, 15).timetuple())
+
+query_dict = {
+    'timestamp': {'$gt': begin_ts1, '$lt': end_ts1},
+    '$not': {'retweeted_status': '0'}
+}
+_, get_results = s.search(query=query_dict, fields=['user', 'terms'])
+
+评估结果
+=======
