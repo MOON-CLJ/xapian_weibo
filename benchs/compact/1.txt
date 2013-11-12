@@ -1,0 +1,13 @@
+mirage@mirage:/opt/xapian_weibo/data/20130616$ time xapian-compact -F --multipass _master_timeline_weibo_20043/ _master_timeline_weibo_20047/ _master_timeline_weibo_20051/ _master_timeline_weibo_20055/
+_master_timeline_weibo_20059/ _master_timeline_weibo_20063/ _master_timeline_weibo_20067/ _master_timeline_weibo_20071/ _master_timeline_weibo_20075/ _master_timeline_weibo_20079/ ~/clj/dev/compact_xapi
+an/20130616_v1
+postlist: Reduced by 56% 36911296K (65841112K -> 28929816K)
+record: Reduced by 1% 1683952K (84418288K -> 82734336K)
+termlist: Reduced by 45% 36706704K (81130304K -> 44423600K)
+position: doesn't exist
+spelling: doesn't exist
+synonym: doesn't exist
+
+real    313m43.254s
+user    223m28.922s
+sys     14m35.539s
