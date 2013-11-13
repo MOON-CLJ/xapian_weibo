@@ -194,13 +194,13 @@ class XapianSearch(object):
         return self._extract_item(doc, fields)
 
     @fields_not_empty
-    def search(self, query=None, sort_by=None, start_offset=0,
+    def search(self, query=None, parsed_query=None, sort_by=None, start_offset=0,
                max_offset=None, fields=None, count_only=False, **kwargs):
 
         db = self.database
         enquire = self.enquire
 
-        query = parse_query(query, self.schema, db)
+        query = parsed_query if parsed_query else parse_query(query, self.schema, db)
         if xapian.Query.empty(query):
             return 0, lambda: []
 
