@@ -5,8 +5,9 @@ from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
 from utils import load_scws, cut, log_to_stub
 from consts import XAPIAN_DATA_DIR, XAPIAN_STUB_FILE_DIR
 from datetime import datetime
+import cPickle as pickle
+import zlib
 import xapian
-import msgpack
 import os
 
 
@@ -45,7 +46,7 @@ class XapianIndex(object):
         # origin_data跟term和value的处理方式不一样
         item = dict([(k, self.pre_func[k](item.get(k)) if k in self.pre_func and item.get(k) else item.get(k))
                      for k in self.iter_keys])
-        document.set_data(msgpack.packb(item))
+        document.set_data(zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
         document.add_term(document_id)
         if self.schema_version == 1:
             self.db.replace_document(document_id, document)
