@@ -99,7 +99,7 @@ class Schema:
                                   'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
                                   'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': [],
-        'index_value_iter_keys': ['_id'],
+        'index_value_iter_keys': ['_id', 'followers_count'],
         'pre_func': {
             'created_at': lambda x: local2unix(x) if x else 0,
         },
@@ -111,6 +111,7 @@ class Schema:
             {'field_name': 'domain', 'column': 1, 'type': 'term'},
             # value
             {'field_name': '_id', 'column': 0, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 2, 'type': 'long'},
         ],
     }
 
