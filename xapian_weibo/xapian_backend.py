@@ -348,7 +348,6 @@ def _database(folder, writable=False, refresh=False):
     return database
 
 
-"""
 def _stub_database(stub):
     f = open(stub, 'U')
     dbpaths = f.readlines()
@@ -360,10 +359,15 @@ def _stub_database(stub):
         return database
 
     # 默认stub里要么全是remote，要么全不是，去掉"ssh remote "
-    dbpaths = [p[11:] for p in dbpaths]
+    # dbpaths = [p[11:] for p in dbpaths]
+
+    # 默认stub里要么全是remote，要么全不是，去掉"remote "
+    dbpaths = [p[7:] for p in dbpaths]
 
     def create(dbpath):
-        return xapian.remote_open('ssh', dbpath, XAPIAN_REMOTE_OPEN_TIMEOUT)
+        # return xapian.remote_open('ssh', dbpath, XAPIAN_REMOTE_OPEN_TIMEOUT)
+        host, port = dbpath.split(':')
+        return xapian.remote_open(host, int(port), XAPIAN_REMOTE_OPEN_TIMEOUT)
 
     def merge(db1, db2):
         db1.add_database(db2)
@@ -371,12 +375,6 @@ def _stub_database(stub):
 
     database = reduce(merge,
                       map(create, [p for p in dbpaths]))
-    return database
-"""
-
-
-def _stub_database(stub):
-    database = xapian.open_stub(stub)
     return database
 
 
