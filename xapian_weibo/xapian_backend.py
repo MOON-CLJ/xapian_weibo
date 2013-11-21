@@ -99,7 +99,7 @@ class Schema:
                                   'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
                                   'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': [],
-        'index_value_iter_keys': ['_id'],
+        'index_value_iter_keys': ['_id', 'followers_count'],
         'pre_func': {
             'created_at': lambda x: local2unix(x) if x else 0,
         },
@@ -111,6 +111,7 @@ class Schema:
             {'field_name': 'domain', 'column': 1, 'type': 'term'},
             # value
             {'field_name': '_id', 'column': 0, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 2, 'type': 'long'},
         ],
     }
 
@@ -194,13 +195,13 @@ class XapianSearch(object):
         return self._extract_item(doc, fields)
 
     @fields_not_empty
-    def search(self, query=None, sort_by=None, start_offset=0,
+    def search(self, query=None, parsed_query=None, sort_by=None, start_offset=0,
                max_offset=None, fields=None, count_only=False, **kwargs):
 
         db = self.database
         enquire = self.enquire
 
-        query = parse_query(query, self.schema, db)
+        query = parsed_query if parsed_query else parse_query(query, self.schema, db)
         if xapian.Query.empty(query):
             return 0, lambda: []
 
