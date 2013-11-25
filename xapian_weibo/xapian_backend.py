@@ -6,7 +6,8 @@ from query_base import parse_query
 from utils import local2unix
 import os
 import xapian
-import msgpack
+import cPickle as pickle
+import zlib
 
 
 SCHEMA_VERSION = XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
@@ -228,7 +229,7 @@ class XapianSearch(object):
         return mset.size(), result_generator
 
     def _extract_item(self, doc, fields):
-        r = msgpack.unpackb(self._get_document_data(self.database, doc))
+        r = pickle.loads(zlib.decompress(self._get_document_data(self.database, doc)))
         if fields is not None:
             item = {}
             for field in fields:
