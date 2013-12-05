@@ -14,6 +14,10 @@ import multiprocessing
 import operator
 import re
 import socket
+import sys
+import json
+import csv
+import xml.etree.ElementTree as ET
 
 SCWS_ENCODING = 'utf-8'
 SCWS_RULES = '/usr/local/scws/etc/rules.utf8.ini'
@@ -26,7 +30,6 @@ CUSTOM_DICT_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'userdic.txt')
 EXTRA_STOPWORD_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'stopword.txt')
 EXTRA_EMOTIONWORD_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'emotionlist.txt')
 EXTRA_ONE_WORD_WHITE_LIST_PATH = os.path.join(ABSOLUTE_DICT_PATH, 'one_word_white_list.txt')
-
 
 def local2unix(time_str):
     time_format = '%a %b %d %H:%M:%S +0800 %Y'
@@ -187,3 +190,26 @@ def log_to_stub(stub_file_dir, dbpath, db_folder, remote_stub=False):
                 f.write(STUB_REMOTE_FILE_PER_LINE % {"host": host, "db_folder": db_folder})
             else:
                 f.write(STUB_FILE_PER_LINE % {"db_folder": db_folder})
+
+def xml_to_json(elem,item):
+
+    user_item = {}
+    retweet_item = {}
+    if elem.tag == 'user':#user表示该微博的用户
+        us_items = elem.getchildren()
+        for us_item in us_items:
+            user_item[us_item.tag] = item[us_item.tag]
+        return user_item
+            
+    elif elem.tag == 'retweeted_status':#retweeted_status表示原创微博
+        re_items = elem.getchildren()
+        for re_item in re_items:
+            retweet_item[re_item.tag] = item[re_item.tag]
+        return retweet_item
+                
+    else:
+        return elem.text
+            
+
+    
+
