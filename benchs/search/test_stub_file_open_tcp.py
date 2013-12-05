@@ -4,11 +4,10 @@ import sys
 import time
 import datetime
 
-sys.path.append('../../xapian_weibo')
-from xapian_backend import XapianSearch
+from xapian_weibo.xapian_backend import XapianSearch
 
 stub = 'master_timeline_weibo_stub'
-s = XapianSearch(stub=stub, include_remote=True)
+s = XapianSearch(stub=stub)
 begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
 end_ts1 = time.mktime(datetime.datetime(2013, 1, 15).timetuple())
 
