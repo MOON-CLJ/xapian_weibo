@@ -6,7 +6,8 @@ from query_base import parse_query
 from utils import local2unix
 import os
 import xapian
-import msgpack
+import cPickle as pickle
+import zlib
 
 
 SCHEMA_VERSION = XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION
@@ -19,9 +20,9 @@ class Schema:
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
-        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo'],
+        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count'],
         'index_item_iter_keys': ['retweeted_status', 'user'],
-        'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count'],
+        'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'attitudes_count', 'comments_count'],
         'pre_func': {
             'user': lambda x: x['id'] if x else 0,
             'retweeted_status': lambda x: x['id'] if x else 0,
@@ -38,6 +39,8 @@ class Schema:
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
             {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
+            {'field_name': 'attitudes_count', 'column': 6, 'type': 'long'},
+            {'field_name': 'comments_count', 'column': 7, 'type': 'long'},
         ],
     }
 
@@ -99,7 +102,7 @@ class Schema:
                                   'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
                                   'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': [],
-        'index_value_iter_keys': ['_id'],
+        'index_value_iter_keys': ['_id', 'followers_count'],
         'pre_func': {
             'created_at': lambda x: local2unix(x) if x else 0,
         },
@@ -111,6 +114,7 @@ class Schema:
             {'field_name': 'domain', 'column': 1, 'type': 'term'},
             # value
             {'field_name': '_id', 'column': 0, 'type': 'long'},
+            {'field_name': 'followers_count', 'column': 2, 'type': 'long'},
         ],
     }
 
@@ -194,13 +198,13 @@ class XapianSearch(object):
         return self._extract_item(doc, fields)
 
     @fields_not_empty
-    def search(self, query=None, sort_by=None, start_offset=0,
+    def search(self, query=None, parsed_query=None, sort_by=None, start_offset=0,
                max_offset=None, fields=None, count_only=False, **kwargs):
 
         db = self.database
         enquire = self.enquire
 
-        query = parse_query(query, self.schema, db)
+        query = parsed_query if parsed_query else parse_query(query, self.schema, db)
         if xapian.Query.empty(query):
             return 0, lambda: []
 
@@ -225,7 +229,7 @@ class XapianSearch(object):
         return mset.size(), result_generator
 
     def _extract_item(self, doc, fields):
-        r = msgpack.unpackb(self._get_document_data(self.database, doc))
+        r = pickle.loads(zlib.decompress(self._get_document_data(self.database, doc)))
         if fields is not None:
             item = {}
             for field in fields:
@@ -358,10 +362,15 @@ def _stub_database(stub):
         return database
 
     # 默认stub里要么全是remote，要么全不是，去掉"ssh remote "
-    dbpaths = [p[11:] for p in dbpaths]
+    # dbpaths = [p[11:] for p in dbpaths]
+
+    # 默认stub里要么全是remote，要么全不是，去掉"remote "
+    dbpaths = [p[7:] for p in dbpaths]
 
     def create(dbpath):
-        return xapian.remote_open('ssh', dbpath, XAPIAN_REMOTE_OPEN_TIMEOUT)
+        # return xapian.remote_open('ssh', dbpath, XAPIAN_REMOTE_OPEN_TIMEOUT)
+        host, port = dbpath.split(':')
+        return xapian.remote_open(host, int(port), XAPIAN_REMOTE_OPEN_TIMEOUT)
 
     def merge(db1, db2):
         db1.add_database(db2)
