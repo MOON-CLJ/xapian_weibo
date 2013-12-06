@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from consts import FROM_BSON, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL, XAPIAN_INDEX_SCHEMA_VERSION
+from consts import FROM_BSON, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL
 if FROM_BSON:
     from consts import BSON_FILEPATH
 from bs_input import KeyValueBSONInput
@@ -15,18 +15,7 @@ def load_items_from_bson(bs_filepath=BSON_FILEPATH):
     return bs_input
 
 
-def fill_field_from_leveldb(item, extra_source, schema_version=XAPIAN_INDEX_SCHEMA_VERSION):
-    try:
-        value = extra_source.get('bucket').Get(str(item['_id']))
-    except KeyError:
-        value = "0"
-    if schema_version == 3:
-        item[extra_source.get('extra_field')] = int(value)
-    elif schema_version == 4:
-        item[extra_source.get('extra_field')] = value
-
-
-def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]):
+def send_all(load_origin_data_func, sender):
     count = 0
     tb = time.time()
     ts = tb
@@ -35,8 +24,6 @@ def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]
         还没等work连上，就开始在发了
         但如果work长时间没连上，zmq的后台发送队列会满，又会阻塞发送
         """
-        for func in fill_field_funcs:
-            func(item, extra_source)
         sender.send_json(item)
         count += 1
         if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
@@ -50,7 +37,7 @@ def send_all(load_origin_data_func, sender, extra_source={}, fill_field_funcs=[]
     return count, total_cost
 
 
-def index_forever(xapian_indexer, receiver, controller, poller):
+def index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs=[]):
     """
     Process index forever
     """
@@ -62,6 +49,9 @@ def index_forever(xapian_indexer, receiver, controller, poller):
         socks = dict(poller.poll())
         if socks.get(receiver) == zmq.POLLIN:
             item = receiver.recv_json()
+            if fill_field_funcs:
+                for func in fill_field_funcs:
+                    item = func(item)
             xapian_indexer.add_or_update(item)
             count += 1
             if count % XAPIAN_FLUSH_DB_SIZE == 0:
