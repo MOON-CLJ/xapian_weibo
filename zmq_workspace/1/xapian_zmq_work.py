@@ -43,7 +43,7 @@ if __name__ == '__main__':
     remote_stub = args.remote_stub
 
     dbpath = XAPIAN_DB_PATH
-    if SCHEMA_VERSION not in [2, 3, 4]:
+    if SCHEMA_VERSION not in [1, 2]:
         raise InvalidSchemaError()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, remote_stub)
 

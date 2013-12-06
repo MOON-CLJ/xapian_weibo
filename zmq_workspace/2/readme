@@ -1,13 +1,12 @@
 schema:
-    user
+    sentiment
 
 from_bson:
     true
 
 usage:
     python zmq_workspace/2/xapian_zmq_vent.py
-    ## todo
-    python zmq_workspace/2/xapian_zmq_work.py
+    python zmq_workspace/2/xapian_zmq_work.py [-r]
 
 limit:
-    1 .. 1
+    1 .. n

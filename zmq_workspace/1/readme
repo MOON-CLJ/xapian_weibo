@@ -1,6 +1,6 @@
 schema:
+    user
     weibo
-    sentiment
 
 from_bson:
     true
