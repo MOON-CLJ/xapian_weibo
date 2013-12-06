@@ -18,7 +18,7 @@ ORIGIN_KEYS = ['user', 'retweeted_uid', '_id', 'retweeted_mid', 'timestamp', \
 RESP_ITER_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', \
                   'timestamp', 'reposts_count', 'source', 'bmiddle_pic', \
                   'geo', 'attitudes_count', 'comments_count']
-CONVERT_TO_INT_KEYS = ['_id', 'user_id', 'retweeted_uid', 'retweeted_mid', \
+CONVERT_TO_INT_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid', \
                        'reposts_count', 'comments_count', 'timestamp']
 ABSENT_KEYS = ['attitudes_count', 'source']
 IP_TO_GEO_KEY = 'geo'
@@ -77,10 +77,10 @@ def WeiboItem(itemList):
     weibo = dict()
 
     for key in RESP_ITER_KEYS:
-        if key in ABSENT_KEYS:
-            value = None
 
-        else:
+        value = None
+
+        if key not in ABSENT_KEYS:
             value = itemList[ORIGIN_KEYS.index(key)]
             if value == '':
                 value = None
@@ -90,7 +90,9 @@ def WeiboItem(itemList):
 
             elif key == MID_STARTS_WITH_C:
                 if value[:2] == 'c_':
-                    value = value[2:]
+                    value = int(value[2:])
+                else:
+                    value = int(value)
 
             elif key in CONVERT_TO_INT_KEYS:
                 value = int(value)
@@ -98,36 +100,43 @@ def WeiboItem(itemList):
         weibo[key] = value 
 
     return weibo
-    
+
+
+def itemLine2Dict(line):
+    itemlist = line.strip().split(',')
+    if itemlist[-1] in SP_TYPE_KEYS:
+        if len(itemlist) != 25:
+            try:
+                field_0_15, field_16, field_17_24 = line.strip().split('"')
+                field_0_15 = field_0_15[:-1].split(',')
+                field_17_24 = field_17_24[1:].split(',')                 
+                itemlist = field_0_15 + [field_16] + field_17_24
+            except:
+                print line
+                print 'Unkown parse error'
+                return None
+    else:
+        return None
+
+    itemdict = WeiboItem(itemlist)
+    return itemdict
+
 
 def main():
     f = open('MB_QL_1111_1112_NODE1.csv', 'r')
     count = 0
     ts = te = time.time()
-    for line in f.readlines():
+    for line in f:
         count += 1
         if count % 10000 == 0:
             te = time.time()
             print count, '%s sec' % (te - ts)
             ts = te
 
-        itemlist = line.strip().split(',')
-        if itemlist[-1] in SP_TYPE_KEYS:
-            if len(itemlist) != 25:
-                try:
-                    field_0_15, field_16, field_17_24 = line.strip().split('"')
-                    field_0_15 = field_0_15.strip(',').split(',')
-                    field_17_24 = field_17_24[1:].split(',')                 
-                    itemlist = field_0_15 + [field_16] + field_17_24
-                except:
-                    print line
-                    print 'Unkown parse error'
-                    continue
-        else:
-            continue
+        itemdict = itemLine2Dict(line)
 
-        itemdict = WeiboItem(itemlist)
-        print itemdict
+        if itemdict:
+            print itemdict
 
     f.close()
 
