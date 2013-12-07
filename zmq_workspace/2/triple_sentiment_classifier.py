@@ -28,7 +28,7 @@ def if_emoticoned_weibo(r):
 
 
 def if_empty_retweet_weibo(r):
-    is_empty_retweet = 1 if r['retweeted_status'] and r['text'] in ['转发微博', '轉發微博', 'Repost', 'Repost Weibo'] else 0
+    is_empty_retweet = 1 if 'retweeted_status' in r and r['retweeted_status'] and r['text'] in [u'转发微博', u'轉發微博', u'Repost', u'Repost Weibo'] else 0
     return is_empty_retweet
 
 
@@ -49,7 +49,6 @@ with open('/home/mirage/sentiment/4groups.csv') as f:
 
         if pair[1] == '3':
             sad_set.add(pair[0].decode('utf-8'))
-
 
 HAPPY = 1
 ANGRY = 2
@@ -122,10 +121,10 @@ def triple_classifier(tweet):
     emoticon_sentiment = emoticon(text)
     if emoticon_sentiment != 0:
         sentiment = emoticon_sentiment
-        text = ''
+        text = u''
 
-    if text != '':
-        entries = cut(cut_str, text)
+    if text != u'':
+        entries = cut(cut_str, text.encode('utf-8'))
         entry = [e.decode('utf-8') for e in entries]
         bow = dictionary_1.doc2bow(entry)
         s = [1, 1]

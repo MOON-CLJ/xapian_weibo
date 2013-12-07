@@ -51,7 +51,7 @@ def index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs
             item = receiver.recv_json()
             if fill_field_funcs:
                 for func in fill_field_funcs:
-                    item = func(item)
+                    func(item)
             xapian_indexer.add_or_update(item)
             count += 1
             if count % XAPIAN_FLUSH_DB_SIZE == 0:
