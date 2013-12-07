@@ -134,7 +134,7 @@ class Schema:
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
             {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
-            #{'field_name': 'attitudes_count', 'column': 7, 'type': 'long'},
+            #{'field_name': 'attitudes_count', 'column': 7, 'type': 'long'},#目前缺少这一字段用None表示
             {'field_name': 'comments_count', 'column': 6, 'type': 'long'},
         ],
     }

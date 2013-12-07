@@ -1,8 +1,7 @@
 schema:
-    user
-    weibo
+    weibo_csv
 
-from_bson:
+from_csv:
     true
 
 usage:
