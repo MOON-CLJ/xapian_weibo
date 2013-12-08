@@ -20,8 +20,8 @@ class Schema:
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
-        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count'],
-        'index_item_iter_keys': ['retweeted_status', 'user'],
+        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count', 'sentiment'],
+        'index_item_iter_keys': ['retweeted_status', 'user', 'sentiment'],
         'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'attitudes_count', 'comments_count'],
         'pre_func': {
             'user': lambda x: x['id'] if x else 0,
@@ -35,6 +35,7 @@ class Schema:
             {'field_name': 'user', 'column': 0, 'type': 'long'},
             {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
             {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'sentiment', 'column': 8, 'type': 'int'},
             # value
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
@@ -74,6 +75,8 @@ class Schema:
         ],
     }
 
+    """
+    注释掉，暂时保留
     v3 = {
         'origin_data_iter_keys': ['_id'],
         'index_item_iter_keys': ['user', 'sentiment'],
@@ -95,6 +98,7 @@ class Schema:
             {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
         ],
     }
+    """
 
     v4 = {
         'origin_data_iter_keys': ['_id', 'domain', 'province', 'city', 'verified', 'name', 'friends_count',
@@ -137,6 +141,7 @@ class Schema:
             {'field_name': 'comments_count', 'column': 6, 'type': 'long'},
         ],
     }
+
 
 def fields_not_empty(func):
     def _(*args, **kwargs):
