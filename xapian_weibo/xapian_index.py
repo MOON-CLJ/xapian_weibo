@@ -19,7 +19,7 @@ class XapianIndex(object):
         self.schema = getattr(Schema, 'v%s' % schema_version)
         if schema_version == 1:
             from consts import XAPIAN_DB_FOLDER_PREFIX
-            db_folder = os.path.join(XAPIAN_DB_FOLDER_PREFIX, dbpath)
+            db_folder = os.path.join(XAPIAN_DB_FOLDER_PREFIX, '_%s' % dbpath)
         else:
             today_date_str = datetime.now().date().strftime("%Y%m%d")
             pid = os.getpid()

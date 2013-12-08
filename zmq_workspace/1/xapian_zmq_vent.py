@@ -14,18 +14,6 @@ import zmq
 
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
 schema = getattr(Schema, 'v%s' % SCHEMA_VERSION)
-if SCHEMA_VERSION in [3, 4, 5]:
-    import os
-    import leveldb
-    from consts import XAPIAN_EXTRA_FIELD
-    from index_utils import fill_field_from_leveldb
-    LEVELDBPATH = '/home/arthas/leveldb'
-    if SCHEMA_VERSION == 3:
-        leveldb_dbname = 'huyue_weibo_positive_negative_sentiment'
-    elif SCHEMA_VERSION == 4:
-        leveldb_dbname = 'linhao_global_user_field'
-    leveldb_bucket = leveldb.LevelDB(os.path.join(LEVELDBPATH, leveldb_dbname),
-                                     block_cache_size=8 * (2 << 25), write_buffer_size=8 * (2 << 25))
 
 
 if __name__ == '__main__':
@@ -51,13 +39,7 @@ if __name__ == '__main__':
         bs_input = load_items_from_bson()
         load_origin_data_func = bs_input.reads
 
-    if SCHEMA_VERSION in [3, 4, 5]:
-        extra_source = {}
-        extra_source['bucket'] = leveldb_bucket
-        extra_source['extra_field'] = XAPIAN_EXTRA_FIELD
-        count, total_cost = send_all(load_origin_data_func, sender, extra_source, fill_field_funcs=[fill_field_from_leveldb])
-    else:
-        count, total_cost = send_all(load_origin_data_func, sender)
+    count, total_cost = send_all(load_origin_data_func, sender)
 
     if from_bson:
         bs_input.close()
