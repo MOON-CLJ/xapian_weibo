@@ -35,12 +35,18 @@ if __name__ == '__main__':
     from_csv = FROM_CSV
     
     if from_csv:
-        csv_input = load_items_from_csv()
+        from consts import CSV_FILEPATH
+        if os.path.isdir(CSV_FILEPATH):
+            files = os.listdir(CSV_FILEPATH)
+            for f in files:
+                csv_input = load_items_from_csv(CSV_FILEPATH + f)
+                count, total_cost = prefunc_send(csv_input, sender)
+                csv_input.close()
+        elif os.path.isfile(CSV_FILEPATH):
+            csv_input = load_items_from_csv(CSV_FILEPATH)
+            count, total_cost = prefunc_send(csv_input, sender)
+            csv_input.close()
 
-    count, total_cost = prefunc_send(csv_input, sender)
-
-    if from_csv:
-        csv_input.close()
 
     # Send kill signal to workers
     controller.send("KILL")

@@ -48,10 +48,10 @@ class Schema:
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
         'origin_data_iter_keys': ['_id', 'province', 'city', 'verified', 'name', 'friends_count',
-                                  'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
-                                  'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
+                                  'gender', 'profile_image_url', 'verified_type',
+                                  'followers_count', 'followers', 'location', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': ['name', 'location', 'province'],
-        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count'],
         'pre_func': {
             'created_at': lambda x: local2unix(x) if x else 0,
         },
@@ -70,8 +70,7 @@ class Schema:
             {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
             {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
             {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
-            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 7, 'type': 'long'},
         ],
     }
 

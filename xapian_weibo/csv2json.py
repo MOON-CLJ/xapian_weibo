@@ -114,7 +114,7 @@ def itemLine2Dict(line):
                 field_17_24 = field_17_24[1:].split(',')                 
                 itemlist = field_0_15 + [field_16] + field_17_24
             except:
-                print line
+                #print line
                 print 'Unkown parse error'
                 return None
     else:

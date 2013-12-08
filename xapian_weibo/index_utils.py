@@ -15,8 +15,7 @@ if FROM_BSON:
         return bs_input
 
 if FROM_CSV:
-    from consts import CSV_FILEPATH
-    def load_items_from_csv(csv_filepath=CSV_FILEPATH):
+    def load_items_from_csv(csv_filepath):
         print 'csv file mode: 从CSV文件中加载数据'
         csv_input = open(csv_filepath, 'r')
         return csv_input

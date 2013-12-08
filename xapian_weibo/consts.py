@@ -3,7 +3,7 @@
 
 XAPIAN_INDEX_LOCK_FILE = '/tmp/xapian_weibo'
 XAPIAN_REMOTE_OPEN_TIMEOUT = 300000  # 300s
-XAPIAN_INDEX_SCHEMA_VERSION = 5
+XAPIAN_INDEX_SCHEMA_VERSION = 1
 XAPIAN_SEARCH_DEFAULT_SCHEMA_VERSION = 2
 
 if XAPIAN_INDEX_SCHEMA_VERSION == 2:
@@ -31,8 +31,8 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 5:
     XAPIAN_ZMQ_CTRL_VENT_PORT = 5566
 
 PROD_VENV = 0
-FROM_BSON = 0
-FROM_CSV = 1
+FROM_BSON = 1
+FROM_CSV = 0
 if PROD_VENV:
     XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
     XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
@@ -58,17 +58,17 @@ else:
     if XAPIAN_INDEX_SCHEMA_VERSION == 1:
         XAPIAN_DB_FOLDER_PREFIX = '/home/arthas/dev/data/20130000'
     XAPIAN_ZMQ_VENT_HOST = 'localhost'
-    XAPIAN_FLUSH_DB_SIZE = 2000
+    XAPIAN_FLUSH_DB_SIZE = 20000
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 0  # immediately
     if FROM_BSON:
         if XAPIAN_INDEX_SCHEMA_VERSION == 2:
             BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_weibo.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 1:
-            BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_user.bson'
+            BSON_FILEPATH = '/home/arthas/dev/original_data/dump60/master_timeline/master_timeline_user.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 3:
             BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_weibo.bson'
         elif XAPIAN_INDEX_SCHEMA_VERSION == 4:
             BSON_FILEPATH = '/home/arthas/dev/xapian_weibo/tests/master_timeline_user.bson'
     if FROM_CSV:
         if XAPIAN_INDEX_SCHEMA_VERSION == 5:
-            CSV_FILEPATH = '/home/arthas/dev/original_data/MB_QL_9_10_NODE10.csv'
+            CSV_FILEPATH = '/home/arthas/dev/original_data/MB_QL_9_10_NODE10.csv'#文件夹时末尾需要/
