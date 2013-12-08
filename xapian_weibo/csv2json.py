@@ -23,7 +23,7 @@ CONVERT_TO_INT_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid', \
 ABSENT_KEYS = ['attitudes_count', 'source']
 IP_TO_GEO_KEY = 'geo'
 MID_STARTS_WITH_C = '_id' # weibo mid starts with 'c_'
-SP_TYPE_KEYS = ['1'] # 1代表新浪微博
+SP_TYPE_KEYS = '1' # 1代表新浪微博
 
 
 # taobao ip service, limit 10 qps
@@ -82,22 +82,18 @@ def WeiboItem(itemList):
 
         if key not in ABSENT_KEYS:
             value = itemList[ORIGIN_KEYS.index(key)]
+            if value is not None:
+                if key == IP_TO_GEO_KEY:
+                    value = ip2geo(value)
 
-            if key == IP_TO_GEO_KEY:
-                value = ip2geo(value)
+                elif key == MID_STARTS_WITH_C:
+                    if value[:2] == 'c_':
+                        value = int(value[2:])
+                    else:
+                        value = int(value)
 
-            elif key == MID_STARTS_WITH_C:
-                if value[:2] == 'c_':
-                    value = int(value[2:])
-                else:
+                elif key in CONVERT_TO_INT_KEYS:
                     value = int(value)
-
-            elif key in CONVERT_TO_INT_KEYS:
-                #这里value可能是空
-                if value:
-                    value = int(value)
-                else:
-                    value = 0
 
         weibo[key] = value 
 
@@ -112,9 +108,10 @@ def itemLine2Dict(line):
                 field_0_15, field_16, field_17_24 = line.strip().split('"')
                 field_0_15 = field_0_15[:-1].split(',')
                 field_17_24 = field_17_24[1:].split(',')                 
-                itemlist = field_0_15 + [field_16] + field_17_24
+                field_0_15.extend([field_16])
+                field_0_15.extend([field_17_24])
+                itemlist = field_0_15
             except:
-                #print line
                 print 'Unkown parse error'
                 return None
     else:
