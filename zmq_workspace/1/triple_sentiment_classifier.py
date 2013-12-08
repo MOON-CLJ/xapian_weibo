@@ -4,9 +4,12 @@
 from __future__ import division
 import re
 import opencc
+import os
 from gensim import corpora
 import cPickle as pickle
 from xapian_weibo.utils import load_scws, cut, load_emotion_words
+
+AB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
 cut_str = load_scws()
 
@@ -38,7 +41,7 @@ angry_set = set()
 sad_set = set()
 
 
-with open('/home/mirage/sentiment/4groups.csv') as f:
+with open(os.path.join(AB_PATH, '4groups.csv')) as f:
     for l in f:
         pair = l.rstrip().split('\t')
         if pair[1] == '1' or pair[1] == '4':
@@ -88,21 +91,21 @@ def emoticon(text):
 
 
 '''define subjective dictionary and subjective words weight'''
-dictionary_1 = corpora.Dictionary.load('/home/mirage/sentiment/subjective_54W_4.dict')
+dictionary_1 = corpora.Dictionary.load(os.path.join(AB_PATH, 'subjective_54W_4.dict'))
 step1_score = {}
-with open('/home/mirage/sentiment/new_emoticon_54W_4.txt') as f:
+with open(os.path.join(AB_PATH, 'new_emoticon_54W_4.txt')) as f:
     for l in f:
         lis = l.rstrip().split()
         step1_score[int(lis[0])] = [float(lis[1]), float(lis[2])]
 
 
 '''define polarity dictionary and polarity words weight'''
-with open('/home/mirage/sentiment/triple_sentiment.pkl') as f:
+with open(os.path.join(AB_PATH, 'triple_sentiment.pkl')) as f:
     dictionary_2 = pickle.load(f)
 
 
 step2_score = {}
-with open('/home/mirage/sentiment/triple_sentiment_words_weight.txt') as f:
+with open(os.path.join(AB_PATH, 'triple_sentiment_words_weight.txt')) as f:
     for l in f:
         lis = l.rstrip().split()
         step2_score[int(lis[0])] = [float(lis[1]), float(lis[2]), float(lis[3])]
