@@ -48,10 +48,10 @@ class Schema:
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
         'origin_data_iter_keys': ['_id', 'province', 'city', 'verified', 'name', 'friends_count',
-                                  'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
-                                  'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
+                                  'gender', 'profile_image_url', 'verified_type',
+                                  'followers_count', 'followers', 'location', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': ['name', 'location', 'province'],
-        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count'],
         'pre_func': {
             'created_at': lambda x: local2unix(x) if x else 0,
         },
@@ -70,8 +70,7 @@ class Schema:
             {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
             {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
             {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
-            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 7, 'type': 'long'},
         ],
     }
 
@@ -118,6 +117,26 @@ class Schema:
         ],
     }
 
+    v5 = {
+        'origin_data_iter_keys': ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count'],
+        'index_item_iter_keys': ['retweeted_mid', 'user'],
+        'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'comments_count'],
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'retweeted_mid', 'column': 1, 'type': 'long'},
+            {'field_name': 'text', 'column': 2, 'type': 'text'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
+            #{'field_name': 'attitudes_count', 'column': 7, 'type': 'long'},#目前缺少这一字段用None表示
+            {'field_name': 'comments_count', 'column': 6, 'type': 'long'},
+        ],
+    }
 
 def fields_not_empty(func):
     def _(*args, **kwargs):

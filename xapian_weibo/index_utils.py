@@ -1,18 +1,44 @@
 # -*- coding: utf-8 -*-
 
-from consts import FROM_BSON, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL
-if FROM_BSON:
-    from consts import BSON_FILEPATH
+from consts import FROM_BSON, FROM_CSV, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL
 from bs_input import KeyValueBSONInput
 from datetime import datetime
+from csv2json import itemLine2Dict
 import time
 import zmq
 
+if FROM_BSON:
+    from consts import BSON_FILEPATH
+    def load_items_from_bson(bs_filepath=BSON_FILEPATH):
+        print 'bson file mode: 从备份的BSON文件中加载数据'
+        bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
+        return bs_input
 
-def load_items_from_bson(bs_filepath=BSON_FILEPATH):
-    print 'bson file mode: 从备份的BSON文件中加载数据'
-    bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
-    return bs_input
+if FROM_CSV:
+    def load_items_from_csv(csv_filepath):
+        print 'csv file mode: 从CSV文件中加载数据'
+        csv_input = open(csv_filepath, 'r')
+        return csv_input
+
+
+def prefunc_send(csv_input, sender):
+    #csv预处理成json后send
+    count = 0
+    tb = time.time()
+    ts = tb
+    for line in csv_input:
+        item = itemLine2Dict(line)
+        if item:
+            sender.send_json(item)
+            count += 1
+            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
+                te = time.time()
+                print 'deliver speed: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE * 10)
+                if count % (XAPIAN_FLUSH_DB_SIZE * 100) == 0:
+                    print 'total deliver %s, cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
+                ts = te
+    total_cost = time.time() - tb
+    return count, total_cost   
 
 
 def send_all(load_origin_data_func, sender):
@@ -32,7 +58,6 @@ def send_all(load_origin_data_func, sender):
             if count % (XAPIAN_FLUSH_DB_SIZE * 100) == 0:
                 print 'total deliver %s, cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
             ts = te
-
     total_cost = time.time() - tb
     return count, total_cost
 
