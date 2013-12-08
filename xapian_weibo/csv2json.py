@@ -1,29 +1,26 @@
 # -*- coding: UTF-8 -*-
 
-import csv
-import re
-import os
 import time
-import datetime
 import urllib
 import json
+import sys
 
 
-ORIGIN_KEYS = ['user', 'retweeted_uid', '_id', 'retweeted_mid', 'timestamp', \
-               'input_time', 'geo', 'province', 'city', 'message_type', 'user_fansnum', \
-               'user_friendsnum', 'comments_count', 'reposts_count', \
-               'retweeted_comments_count', 'retweeted_reposts_count', 'text', 'is_long', \
-               'bmiddle_pic', 'pic_content', 'audio_url', 'audio_content', 'video_url', \
+ORIGIN_KEYS = ['user', 'retweeted_uid', '_id', 'retweeted_mid', 'timestamp',
+               'input_time', 'geo', 'province', 'city', 'message_type', 'user_fansnum',
+               'user_friendsnum', 'comments_count', 'reposts_count',
+               'retweeted_comments_count', 'retweeted_reposts_count', 'text', 'is_long',
+               'bmiddle_pic', 'pic_content', 'audio_url', 'audio_content', 'video_url',
                'video_content', 'sp_type']
-RESP_ITER_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', \
-                  'timestamp', 'reposts_count', 'source', 'bmiddle_pic', \
+RESP_ITER_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text',
+                  'timestamp', 'reposts_count', 'source', 'bmiddle_pic',
                   'geo', 'attitudes_count', 'comments_count']
-CONVERT_TO_INT_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid', \
+CONVERT_TO_INT_KEYS = ['_id', 'user', 'retweeted_uid', 'retweeted_mid',
                        'reposts_count', 'comments_count', 'timestamp']
 ABSENT_KEYS = ['attitudes_count', 'source']
 IP_TO_GEO_KEY = 'geo'
-MID_STARTS_WITH_C = '_id' # weibo mid starts with 'c_'
-SP_TYPE_KEYS = '1' # 1代表新浪微博
+MID_STARTS_WITH_C = '_id'  # weibo mid starts with 'c_'
+SP_TYPE_KEYS = '1'  # 1代表新浪微博
 
 
 # taobao ip service, limit 10 qps
@@ -55,13 +52,13 @@ def taobaoipservice(ip):
 # IP address manipulation functions
 def numToDottedQuad(n):
     "convert long int to dotted quad string"
-    
+
     d = 256 * 256 * 256
     q = []
     while d > 0:
-        m,n = divmod(n,d)
+        m, n = divmod(n, d)
         q.append(str(m))
-        d = d/256
+        d = d / 256
 
     return '.'.join(q)
 
@@ -82,7 +79,7 @@ def WeiboItem(itemList):
 
         if key not in ABSENT_KEYS:
             value = itemList[ORIGIN_KEYS.index(key)]
-            
+
             if key == IP_TO_GEO_KEY:
                 value = ip2geo(value)
 
@@ -96,23 +93,30 @@ def WeiboItem(itemList):
                 value = int(value) if value != '' else 0
 
         if value is not None:
-            weibo[key] = value 
+            weibo[key] = value
 
     return weibo
 
 
+class UnkownParseError(Exception):
+    pass
+
+
 def itemLine2Dict(line):
+    line = unicode(line, 'utf-8')
     itemlist = line.strip().split(',')
     if itemlist[-1] == SP_TYPE_KEYS:
         if len(itemlist) != 25:
             try:
                 field_0_15, field_16, field_17_24 = line.strip().split('"')
                 field_0_15 = field_0_15[:-1].split(',')
-                field_17_24 = field_17_24[1:].split(',')                 
+                field_17_24 = field_17_24[1:].split(',')
                 field_0_15.extend([field_16])
                 field_0_15.extend([field_17_24])
                 itemlist = field_0_15
-            except:
+                if len(itemlist) != 25:
+                    raise UnkownParseError()
+            except UnkownParseError:
                 print 'Unkown parse error'
                 return None
     else:
