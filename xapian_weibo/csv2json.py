@@ -142,7 +142,6 @@ def main():
 
     f.close()
 
-"""
+
 if __name__ == '__main__':
     main()
-"""
