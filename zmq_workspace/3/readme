@@ -5,8 +5,8 @@ from_csv:
     true
 
 usage:
-    python zmq_workspace/1/xapian_zmq_vent.py
-    python zmq_workspace/1/xapian_zmq_work.py [-r]
+    python zmq_workspace/3/xapian_zmq_vent.py
+    python zmq_workspace/3/xapian_zmq_work.py [-r]
 
 current limit:
     1 .. n
