@@ -39,7 +39,7 @@ if __name__ == '__main__':
         if os.path.isdir(CSV_FILEPATH):
             files = os.listdir(CSV_FILEPATH)
             for f in files:
-                csv_input = load_items_from_csv(CSV_FILEPATH + f)
+                csv_input = load_items_from_csv(os.path.join(CSV_FILEPATH, f))
                 count, total_cost = prefunc_send(csv_input, sender)
                 csv_input.close()
         elif os.path.isfile(CSV_FILEPATH):
