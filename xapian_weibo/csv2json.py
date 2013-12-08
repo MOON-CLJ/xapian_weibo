@@ -83,17 +83,17 @@ def WeiboItem(itemList):
         if key not in ABSENT_KEYS:
             value = itemList[ORIGIN_KEYS.index(key)]
             
-                if key == IP_TO_GEO_KEY:
-                    value = ip2geo(value)
+            if key == IP_TO_GEO_KEY:
+                value = ip2geo(value)
 
-                elif key == MID_STARTS_WITH_C:
-                    if value[:2] == 'c_':
-                        value = int(value[2:])
-                    else:
-                        value = int(value)
+            elif key == MID_STARTS_WITH_C:
+                if value[:2] == 'c_':
+                    value = int(value[2:])
+                else:
+                    value = int(value)
 
-                elif key in CONVERT_TO_INT_KEYS:
-                    value = int(value) if value != '' else 0
+            elif key in CONVERT_TO_INT_KEYS:
+                value = int(value) if value != '' else 0
 
         if value is not None:
             weibo[key] = value 
