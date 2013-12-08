@@ -1,7 +1,6 @@
 schema:
     user
     weibo
-    sentiment
 
 from_bson:
     true
@@ -11,5 +10,5 @@ usage:
     python zmq_workspace/1/xapian_zmq_work.py [-r]
 
 current limit:
-    1 .. n [weibo, sentiment]
-    1 .. 1 [user]
+    1 .. n weibo
+    1 .. 1 user

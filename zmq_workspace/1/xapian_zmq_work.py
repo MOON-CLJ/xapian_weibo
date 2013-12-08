@@ -43,13 +43,13 @@ if __name__ == '__main__':
     remote_stub = args.remote_stub
 
     dbpath = XAPIAN_DB_PATH
-    if SCHEMA_VERSION not in [1, 2, 3]:
+    if SCHEMA_VERSION not in [1, 2]:
         raise InvalidSchemaError()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, remote_stub)
 
-    if SCHEMA_VERSION in [1, 2]:
+    if SCHEMA_VERSION == 1:
         index_forever(xapian_indexer, receiver, controller, poller)
-    elif SCHEMA_VERSION == 3:
+    elif SCHEMA_VERSION == 2:
         from consts import XAPIAN_EXTRA_FIELD
         from triple_sentiment_classifier import triple_classifier
 
