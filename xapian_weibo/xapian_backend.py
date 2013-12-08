@@ -119,7 +119,7 @@ class Schema:
 
     v5 = {
         'origin_data_iter_keys': ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count'],
-        #'index_item_iter_keys': ['retweeted_mid', 'user'],
+        'index_item_iter_keys': ['retweeted_mid', 'user'],
         'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'comments_count'],
         'obj_id': '_id',
         # 用于去重的value no(column)
