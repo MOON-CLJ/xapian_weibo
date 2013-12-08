@@ -3,12 +3,12 @@
 from consts import FROM_BSON, FROM_CSV, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL
 from bs_input import KeyValueBSONInput
 from datetime import datetime
-from csv2json import itemLine2Dict
 import time
 import zmq
 
 if FROM_BSON:
     from consts import BSON_FILEPATH
+
     def load_items_from_bson(bs_filepath=BSON_FILEPATH):
         print 'bson file mode: 从备份的BSON文件中加载数据'
         bs_input = KeyValueBSONInput(open(bs_filepath, 'rb'))
@@ -17,39 +17,22 @@ if FROM_BSON:
 if FROM_CSV:
     def load_items_from_csv(csv_filepath):
         print 'csv file mode: 从CSV文件中加载数据'
-        csv_input = open(csv_filepath, 'r')
+        csv_input = open(csv_filepath)
         return csv_input
 
 
-def prefunc_send(csv_input, sender):
-    #csv预处理成json后send
+def send_all(load_origin_data_func, sender, pre_funcs=[]):
     count = 0
     tb = time.time()
     ts = tb
-    for line in csv_input:
-        item = itemLine2Dict(line)
-        if item:
-            sender.send_json(item)
-            count += 1
-            if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
-                te = time.time()
-                print 'deliver speed: %s sec/per %s' % (te - ts, XAPIAN_FLUSH_DB_SIZE * 10)
-                if count % (XAPIAN_FLUSH_DB_SIZE * 100) == 0:
-                    print 'total deliver %s, cost: %s sec [avg: %sper/sec]' % (count, te - tb, count / (te - tb))
-                ts = te
-    total_cost = time.time() - tb
-    return count, total_cost   
-
-
-def send_all(load_origin_data_func, sender):
-    count = 0
-    tb = time.time()
-    ts = tb
-    for _, item in load_origin_data_func():
+    for item in load_origin_data_func():
         """
         还没等work连上，就开始在发了
         但如果work长时间没连上，zmq的后台发送队列会满，又会阻塞发送
         """
+        if pre_funcs:
+            for func in pre_funcs:
+                func(item)
         sender.send_json(item)
         count += 1
         if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:

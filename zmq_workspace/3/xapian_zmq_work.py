@@ -47,4 +47,12 @@ if __name__ == '__main__':
         raise InvalidSchemaError()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, remote_stub)
 
-    index_forever(xapian_indexer, receiver, controller, poller)
+    ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
+    sys.path.append(ab_path)
+    from consts import XAPIAN_EXTRA_FIELD
+    from triple_sentiment_classifier import triple_classifier
+
+    def fill_sentiment(item):
+        sentiment = triple_classifier(item)
+        item[XAPIAN_EXTRA_FIELD] = sentiment
+    index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs=[fill_sentiment])
