@@ -50,6 +50,8 @@ if __name__ == '__main__':
     if SCHEMA_VERSION == 1:
         index_forever(xapian_indexer, receiver, controller, poller)
     elif SCHEMA_VERSION == 2:
+        ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
+        sys.path.append(ab_path)
         from consts import XAPIAN_EXTRA_FIELD
         from triple_sentiment_classifier import triple_classifier
 
