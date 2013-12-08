@@ -103,7 +103,7 @@ def WeiboItem(itemList):
 
 def itemLine2Dict(line):
     itemlist = line.strip().split(',')
-    if itemlist[-1] in SP_TYPE_KEYS:
+    if itemlist[-1] == SP_TYPE_KEYS:
         if len(itemlist) != 25:
             try:
                 field_0_15, field_16, field_17_24 = line.strip().split('"')
