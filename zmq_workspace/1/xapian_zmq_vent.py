@@ -41,6 +41,7 @@ if __name__ == '__main__':
 
     def bs_input_pre_func(item):
         item = item[1]
+        return item
 
     count, total_cost = send_all(load_origin_data_func, sender, pre_funcs=[bs_input_pre_func])
 
