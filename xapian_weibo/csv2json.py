@@ -108,7 +108,10 @@ def itemLine2Dict(line):
     if itemlist[-1] == SP_TYPE_KEYS:
         if len(itemlist) != 25:
             try:
-                field_0_15, field_16, field_17_24 = line.strip().split('"')
+                tp = line.strip().split('"')
+                if len(tp) != 3:
+                    raise UnkownParseError()
+                field_0_15, field_16, field_17_24 = tp
                 field_0_15 = field_0_15[:-1].split(',')
                 field_17_24 = field_17_24[1:].split(',')
                 field_0_15.extend([field_16])
@@ -117,7 +120,6 @@ def itemLine2Dict(line):
                 if len(itemlist) != 25:
                     raise UnkownParseError()
             except UnkownParseError:
-                print 'Unkown parse error'
                 return None
     else:
         return None
