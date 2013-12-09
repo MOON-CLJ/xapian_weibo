@@ -20,8 +20,8 @@ class Schema:
     v2 = {
         'db': 'master_timeline',
         'collection': 'master_timeline_weibo',
-        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count'],
-        'index_item_iter_keys': ['retweeted_status', 'user'],
+        'origin_data_iter_keys': ['_id', 'user', 'retweeted_status', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count', 'sentiment'],
+        'index_item_iter_keys': ['retweeted_status', 'user', 'sentiment'],
         'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'attitudes_count', 'comments_count'],
         'pre_func': {
             'user': lambda x: x['id'] if x else 0,
@@ -35,6 +35,7 @@ class Schema:
             {'field_name': 'user', 'column': 0, 'type': 'long'},
             {'field_name': 'retweeted_status', 'column': 1, 'type': 'long'},
             {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'sentiment', 'column': 8, 'type': 'int'},
             # value
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
@@ -48,10 +49,10 @@ class Schema:
         'db': 'master_timeline',
         'collection': 'master_timeline_user',
         'origin_data_iter_keys': ['_id', 'province', 'city', 'verified', 'name', 'friends_count',
-                                  'bi_followers_count', 'gender', 'profile_image_url', 'verified_reason', 'verified_type',
-                                  'followers_count', 'followers', 'location', 'active', 'statuses_count', 'friends', 'description', 'created_at'],
+                                  'gender', 'profile_image_url', 'verified_type',
+                                  'followers_count', 'followers', 'location', 'statuses_count', 'friends', 'description', 'created_at'],
         'index_item_iter_keys': ['name', 'location', 'province'],
-        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count', 'bi_followers_count'],
+        'index_value_iter_keys': ['_id', 'created_at', 'followers_count', 'statuses_count', 'friends_count'],
         'pre_func': {
             'created_at': lambda x: local2unix(x) if x else 0,
         },
@@ -70,11 +71,12 @@ class Schema:
             {'field_name': 'followers_count', 'column': 4, 'type': 'long'},
             {'field_name': 'statuses_count', 'column': 5, 'type': 'long'},
             {'field_name': 'friends_count', 'column': 6, 'type': 'long'},
-            {'field_name': 'bi_followers_count', 'column': 7, 'type': 'long'},
-            {'field_name': 'created_at', 'column': 8, 'type': 'long'},
+            {'field_name': 'created_at', 'column': 7, 'type': 'long'},
         ],
     }
 
+    """
+    注释掉，暂时保留
     v3 = {
         'origin_data_iter_keys': ['_id'],
         'index_item_iter_keys': ['user', 'sentiment'],
@@ -96,6 +98,7 @@ class Schema:
             {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
         ],
     }
+    """
 
     v4 = {
         'origin_data_iter_keys': ['_id', 'domain', 'province', 'city', 'verified', 'name', 'friends_count',
@@ -115,6 +118,28 @@ class Schema:
             # value
             {'field_name': '_id', 'column': 0, 'type': 'long'},
             {'field_name': 'followers_count', 'column': 2, 'type': 'long'},
+        ],
+    }
+
+    v5 = {
+        'origin_data_iter_keys': ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count', 'sentiment'],
+        'index_item_iter_keys': ['retweeted_mid', 'user', 'sentiment'],
+        'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'comments_count'],
+        'obj_id': '_id',
+        # 用于去重的value no(column)
+        'collapse_valueno': 3,
+        'idx_fields': [
+            # term
+            {'field_name': 'user', 'column': 0, 'type': 'long'},
+            {'field_name': 'retweeted_mid', 'column': 1, 'type': 'long'},
+            {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'sentiment', 'column': 8, 'type': 'int'},
+            # value
+            {'field_name': '_id', 'column': 3, 'type': 'long'},
+            {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
+            {'field_name': 'reposts_count', 'column': 5, 'type': 'long'},
+            #{'field_name': 'attitudes_count', 'column': 7, 'type': 'long'},#目前缺少这一字段用None表示
+            {'field_name': 'comments_count', 'column': 6, 'type': 'long'},
         ],
     }
 

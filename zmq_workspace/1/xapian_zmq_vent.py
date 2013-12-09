@@ -39,7 +39,11 @@ if __name__ == '__main__':
         bs_input = load_items_from_bson()
         load_origin_data_func = bs_input.reads
 
-    count, total_cost = send_all(load_origin_data_func, sender)
+    def bs_input_pre_func(item):
+        item = item[1]
+        return item
+
+    count, total_cost = send_all(load_origin_data_func, sender, pre_funcs=[bs_input_pre_func])
 
     if from_bson:
         bs_input.close()
