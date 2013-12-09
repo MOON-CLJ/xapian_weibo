@@ -31,6 +31,7 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 5:
     XAPIAN_DB_PATH = 'master_timeline_weibo_csv'
     XAPIAN_ZMQ_VENT_PORT = 5565
     XAPIAN_ZMQ_CTRL_VENT_PORT = 5566
+    XAPIAN_EXTRA_FIELD = 'sentiment'
 
 PROD_VENV = 0
 FROM_BSON = 1
