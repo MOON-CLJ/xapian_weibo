@@ -103,7 +103,7 @@ class UnkownParseError(Exception):
 
 
 def itemLine2Dict(line):
-    line = unicode(line, 'utf-8')
+    line = line.decode("utf8", "ignore")
     itemlist = line.strip().split(',')
     if itemlist[-1] == SP_TYPE_KEYS:
         if len(itemlist) != 25:

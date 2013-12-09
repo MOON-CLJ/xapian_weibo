@@ -33,6 +33,8 @@ def send_all(load_origin_data_func, sender, pre_funcs=[]):
         if pre_funcs:
             for func in pre_funcs:
                 item = func(item)
+        if item is None:
+            continue
         sender.send_json(item)
         count += 1
         if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
