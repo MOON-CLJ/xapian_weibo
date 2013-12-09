@@ -19,7 +19,7 @@ class XapianIndex(object):
         self.schema = getattr(Schema, 'v%s' % schema_version)
         if schema_version == 1:
             from consts import XAPIAN_DB_FOLDER_PREFIX
-            db_folder = os.path.join(XAPIAN_DB_FOLDER_PREFIX, dbpath)
+            db_folder = os.path.join(XAPIAN_DB_FOLDER_PREFIX, '_%s' % dbpath)
         else:
             today_date_str = datetime.now().date().strftime("%Y%m%d")
             pid = os.getpid()
@@ -44,8 +44,8 @@ class XapianIndex(object):
             self.index_field(field, document, item)
 
         # origin_data跟term和value的处理方式不一样
-        item = dict([(k, self.pre_func[k](item.get(k)) if k in self.pre_func and item.get(k) else item.get(k))
-                     for k in self.iter_keys])
+        item = dict(filter(lambda x: x[1] is not None, [(k, self.pre_func[k](item.get(k)) if k in self.pre_func and item.get(k) else item.get(k))
+                    for k in self.iter_keys]))
         document.set_data(zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
         document.add_term(document_id)
         if self.schema_version == 1:
