@@ -45,13 +45,13 @@ with open(os.path.join(AB_PATH, '4groups.csv')) as f:
     for l in f:
         pair = l.rstrip().split('\t')
         if pair[1] == '1' or pair[1] == '4':
-            zan_set.add(pair[0].decode('utf-8'))
+            zan_set.add(pair[0].decode('utf-8', 'ignore'))
 
         if pair[1] == '2':
-            angry_set.add(pair[0].decode('utf-8'))
+            angry_set.add(pair[0].decode('utf-8', 'ignore'))
 
         if pair[1] == '3':
-            sad_set.add(pair[0].decode('utf-8'))
+            sad_set.add(pair[0].decode('utf-8', 'ignore'))
 
 HAPPY = 1
 ANGRY = 2
@@ -128,7 +128,7 @@ def triple_classifier(tweet):
 
     if text != u'':
         entries = cut(cut_str, text.encode('utf-8'))
-        entry = [e.decode('utf-8') for e in entries]
+        entry = [e.decode('utf-8', 'ignore') for e in entries]
         bow = dictionary_1.doc2bow(entry)
         s = [1, 1]
         for pair in bow:
