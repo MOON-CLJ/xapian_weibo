@@ -13,7 +13,7 @@ AB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
 cut_str = load_scws()
 
-cc = opencc.OpenCC('s2t')
+cc = opencc.OpenCC('s2t', opencc_path='/usr/bin/opencc')
 emotions_words = load_emotion_words()
 emotions_words = [unicode(e, 'utf-8') for e in emotions_words]
 t_emotions_words = [cc.convert(e) for e in emotions_words]

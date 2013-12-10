@@ -37,6 +37,7 @@ if __name__ == '__main__':
 
     def csv_input_pre_func(item):
         item = itemLine2Dict(item)
+        return item
 
     if from_csv:
         from consts import CSV_FILEPATH

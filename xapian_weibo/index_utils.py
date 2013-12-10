@@ -32,7 +32,9 @@ def send_all(load_origin_data_func, sender, pre_funcs=[]):
         """
         if pre_funcs:
             for func in pre_funcs:
-                func(item)
+                item = func(item)
+        if item is None:
+            continue
         sender.send_json(item)
         count += 1
         if count % (XAPIAN_FLUSH_DB_SIZE * 10) == 0:
@@ -59,7 +61,7 @@ def index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs
             item = receiver.recv_json()
             if fill_field_funcs:
                 for func in fill_field_funcs:
-                    func(item)
+                    item = func(item)
             xapian_indexer.add_or_update(item)
             count += 1
             if count % XAPIAN_FLUSH_DB_SIZE == 0:

@@ -55,4 +55,5 @@ if __name__ == '__main__':
     def fill_sentiment(item):
         sentiment = triple_classifier(item)
         item[XAPIAN_EXTRA_FIELD] = sentiment
+        return item
     index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs=[fill_sentiment])

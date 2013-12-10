@@ -9,8 +9,6 @@ s = load_scws()
 for word in s.participle(text):
     print word[0]
 
-"""
 import opencc
-cc = opencc.OpenCC('mix2s')
+cc = opencc.OpenCC('mix2s', opencc_path='/usr/bin/opencc')
 print cc.convert(u'Open Chinese Convert（OpenCC）「开放c)。')
-"""

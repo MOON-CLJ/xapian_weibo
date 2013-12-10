@@ -122,8 +122,8 @@ class Schema:
     }
 
     v5 = {
-        'origin_data_iter_keys': ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count'],
-        'index_item_iter_keys': ['retweeted_mid', 'user'],
+        'origin_data_iter_keys': ['_id', 'user', 'retweeted_uid', 'retweeted_mid', 'text', 'timestamp', 'reposts_count', 'source', 'bmiddle_pic', 'geo', 'attitudes_count', 'comments_count', 'sentiment'],
+        'index_item_iter_keys': ['retweeted_mid', 'user', 'sentiment'],
         'index_value_iter_keys': ['_id', 'timestamp', 'reposts_count', 'comments_count'],
         'obj_id': '_id',
         # 用于去重的value no(column)
@@ -133,6 +133,7 @@ class Schema:
             {'field_name': 'user', 'column': 0, 'type': 'long'},
             {'field_name': 'retweeted_mid', 'column': 1, 'type': 'long'},
             {'field_name': 'text', 'column': 2, 'type': 'text'},
+            {'field_name': 'sentiment', 'column': 8, 'type': 'int'},
             # value
             {'field_name': '_id', 'column': 3, 'type': 'long'},
             {'field_name': 'timestamp', 'column': 4, 'type': 'long'},
