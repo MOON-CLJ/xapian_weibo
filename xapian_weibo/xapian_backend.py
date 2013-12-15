@@ -163,11 +163,15 @@ class XapianSearch(object):
             return db1
 
         if stub:
-            if os.path.isfile(stub):
+            # 如果是list，默认全部为文件
+            if isinstance(stub, list):
+                self.database = reduce(merge,
+                                       map(_stub_database, stub))
+            elif os.path.isfile(stub):
                 self.database = _stub_database(stub)
             elif os.path.isdir(stub):
                 self.database = reduce(merge,
-                                       map(_stub_database, [p for p in os.listdir(stub)]))
+                                       map(_stub_database, [os.path.join(stub, p) for p in os.listdir(stub)]))
         else:
             self.database = reduce(merge,
                                    map(create, [os.path.join(path, p) for p in os.listdir(path) if p.startswith('_%s' % name)]))
