@@ -44,11 +44,13 @@ if __name__ == '__main__':
         if os.path.isdir(CSV_FILEPATH):
             files = os.listdir(CSV_FILEPATH)
             total_cost = 0
+            count = 0
             for f in files:
                 csv_input = load_items_from_csv(os.path.join(CSV_FILEPATH, f))
                 load_origin_data_func = csv_input.__iter__
-                count, tmp_cost = send_all(load_origin_data_func, sender, pre_funcs=[csv_input_pre_func])
+                tmp_count, tmp_cost = send_all(load_origin_data_func, sender, pre_funcs=[csv_input_pre_func])
                 total_cost += tmp_cost
+                count += tmp_count
                 csv_input.close()
         elif os.path.isfile(CSV_FILEPATH):
             csv_input = load_items_from_csv(CSV_FILEPATH)

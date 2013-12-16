@@ -3,7 +3,7 @@
 
 from filelock.filelock import FileLock
 from consts import XAPIAN_INDEX_LOCK_FILE
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 import os
 import scws
@@ -187,3 +187,14 @@ def log_to_stub(stub_file_dir, dbpath, db_folder, remote_stub=False):
                 f.write(STUB_REMOTE_FILE_PER_LINE % {"host": host, "db_folder": db_folder})
             else:
                 f.write(STUB_FILE_PER_LINE % {"db_folder": db_folder})
+
+
+def ts_range2date_strs(begin_ts, end_ts):
+    begin_date = date.fromtimestamp(begin_ts)
+    end_date = date.fromtimestamp(end_ts)
+    date_strs = []
+    while (begin_date <= end_date):
+        date_strs.append(begin_date.strftime("%Y%m%d"))
+        begin_date += timedelta(days=1)
+
+    return date_strs
