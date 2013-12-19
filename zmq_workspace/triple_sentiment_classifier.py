@@ -105,16 +105,16 @@ step2_score = {}
 with open(os.path.join(AB_PATH, 'triple_polarity_1.txt')) as f:
     for l in f:
         lis = l.rstrip().split()
-        step2_score[int(lis[0])] = [float(lis[1]),float(lis[2]),float(lis[3])]
+        step2_score[int(lis[0])] = [float(lis[1]), float(lis[2]), float(lis[3])]
 
 
 def triple_classifier(tweet):
     sentiment = 0
     text = tweet['text']  # encode
 
-    if_empty_retweet = if_empty_retweet_weibo(tweet)
-    if if_empty_retweet:
-        text = tweet['retweeted_status']['text']
+    #if_empty_retweet = if_empty_retweet_weibo(tweet)
+    #if if_empty_retweet:
+    #    text = tweet['retweeted_status']['text']
 
     # if_emoticoned = if_emoticoned_weibo(tweet)
     # if if_emoticoned == 1:
