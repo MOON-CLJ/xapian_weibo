@@ -6,10 +6,10 @@ import datetime
 
 sys.path.append('../xapian_weibo')
 from xapian_backend import XapianSearch
-from utils import top_keywords, not_low_freq_keywords
+from utils import top_keywords, not_low_freq_keywords, gen_mset_iter
 
 # 默认schema_version为2
-s = XapianSearch(path='../data/', name='master_timeline_weibo')
+s = XapianSearch(path='/home/arthas/dev/data/20131129/compact_weibo', name='master_timeline_weibo')
 
 # import和初始化, 请使用下面的用法
 # from xapian_weibo.xapian_backend import XapianSearch
@@ -96,13 +96,22 @@ print r['_id']
 print r['text']
 print r['user']
 print r['terms']
-"""
 
-
-print 'query6:'
+print 'query7:'
 all_terms = s.iter_all_xapian_terms(field='_id')
 for i in all_terms:
     print i
+"""
+
+print 'query8:'
+begin_ts1 = time.mktime(datetime.datetime(2013, 1, 1).timetuple())
+
+query_dict = {
+    'timestamp': {'$gt': begin_ts1, '$lt': begin_ts1 + 600},
+}
+mset = s.search(query=query_dict, fields=['terms'], mset_direct=True)
+print top_keywords(gen_mset_iter(s, mset, fields=['terms']), top=3)
+print top_keywords(gen_mset_iter(s, mset, fields=['terms']), top=3)
 
 
 # 下面的用法由于接口的修改暂时没有维护, 但具有参考价值

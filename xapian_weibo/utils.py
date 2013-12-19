@@ -198,3 +198,10 @@ def ts_range2date_strs(begin_ts, end_ts):
         begin_date += timedelta(days=1)
 
     return date_strs
+
+
+def gen_mset_iter(xapian_weibo_search, mset, fields):
+    def result_generator():
+        for match in mset:
+            yield xapian_weibo_search._extract_item(match.document, fields)
+    return result_generator

@@ -228,7 +228,7 @@ class XapianSearch(object):
 
     @fields_not_empty
     def search(self, query=None, parsed_query=None, sort_by=None, start_offset=0,
-               max_offset=None, fields=None, count_only=False, **kwargs):
+               max_offset=None, fields=None, count_only=False, mset_direct=False, **kwargs):
 
         db = self.database
         enquire = self.enquire
@@ -250,6 +250,9 @@ class XapianSearch(object):
 
         mset = self._get_enquire_mset(db, enquire, start_offset, max_offset)
         mset.fetch()  # 提前fetch，加快remote访问速度
+
+        if mset_direct:
+            return mset
 
         def result_generator():
             for match in mset:
