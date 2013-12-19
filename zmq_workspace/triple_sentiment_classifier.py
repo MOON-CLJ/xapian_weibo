@@ -32,8 +32,7 @@ def if_emoticoned_weibo(r):
 
 def if_empty_retweet_weibo(r):
     #暂时没用到该函数，故不作过多考虑
-    #is_empty_retweet = 1 if 'retweeted_status' in r and r['retweeted_status'] and r['text'] in [u'转发微博', u'轉發微博', u'Repost', u'Repost Weibo'] else 0
-    is_empty_retweet = 1 if r['text'] in [u'转发微博', u'轉發微博', u'Repost', u'Repost Weibo'] else 0
+    is_empty_retweet = 1 if 'retweeted_status' in r and r['retweeted_status'] and r['text'] in [u'转发微博', u'轉發微博', u'Repost', u'Repost Weibo'] else 0
     return is_empty_retweet
 
 
