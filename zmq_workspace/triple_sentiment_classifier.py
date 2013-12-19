@@ -31,7 +31,8 @@ def if_emoticoned_weibo(r):
 
 
 def if_empty_retweet_weibo(r):
-    is_empty_retweet = 1 if 'retweeted_status' in r and r['retweeted_status'] and r['text'] in [u'转发微博', u'轉發微博', u'Repost', u'Repost Weibo'] else 0
+    #暂时没用到该函数，故不作过多考虑
+    is_empty_retweet = 1 if r['text'] in [u'转发微博', u'轉發微博', u'Repost', u'Repost Weibo'] else 0
     return is_empty_retweet
 
 
@@ -91,24 +92,20 @@ def emoticon(text):
 
 
 '''define subjective dictionary and subjective words weight'''
-dictionary_1 = corpora.Dictionary.load(os.path.join(AB_PATH, 'subjective_54W_4.dict'))
+dictionary_1 = corpora.Dictionary.load(os.path.join(AB_PATH, 'triple_subjective_1.dict'))
 step1_score = {}
-with open(os.path.join(AB_PATH, 'new_emoticon_54W_4.txt')) as f:
+with open(os.path.join(AB_PATH, 'triple_subjective_1.txt')) as f:
     for l in f:
         lis = l.rstrip().split()
         step1_score[int(lis[0])] = [float(lis[1]), float(lis[2])]
 
-
 '''define polarity dictionary and polarity words weight'''
-with open(os.path.join(AB_PATH, 'triple_sentiment.pkl')) as f:
-    dictionary_2 = pickle.load(f)
-
-
+dictionary_2 = corpora.Dictionary.load(os.path.join(AB_PATH, 'triple_polarity_1.dict'))
 step2_score = {}
-with open(os.path.join(AB_PATH, 'triple_sentiment_words_weight.txt')) as f:
+with open(os.path.join(AB_PATH, 'triple_polarity_1.txt')) as f:
     for l in f:
         lis = l.rstrip().split()
-        step2_score[int(lis[0])] = [float(lis[1]), float(lis[2]), float(lis[3])]
+        step2_score[int(lis[0])] = [float(lis[1]),float(lis[2]),float(lis[3])]
 
 
 def triple_classifier(tweet):
@@ -144,8 +141,8 @@ def triple_classifier(tweet):
             if s[0] > s[1] and s[0] > s[2]:
                 sentiment = HAPPY
             elif s[1] > s[0] and s[1] > s[2]:
-                sentiment = ANGRY
-            elif s[2] > s[1] and s[2] > s[0]:
                 sentiment = SAD
+            elif s[2] > s[1] and s[2] > s[0]:
+                sentiment = ANGRY
 
     return sentiment
