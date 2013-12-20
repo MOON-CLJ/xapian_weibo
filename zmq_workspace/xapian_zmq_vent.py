@@ -2,13 +2,18 @@
 
 import sys
 import os
-ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../xapian_weibo')
+ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../xapian_weibo')
 sys.path.append(ab_path)
 
-from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
+from consts import XAPIAN_INDEX_SCHEMA_VERSION, FROM_BSON, FROM_CSV, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
-from index_utils import load_items_from_bson, load_items_from_csv, send_all
+from index_utils import send_all
+if FROM_BSON:
+    from index_utils import load_items_from_bson
+if FROM_CSV:
+    from index_utils import load_items_from_csv
 from xapian_backend import Schema
+from csv2json import itemLine2Dict
 import time
 import zmq
 
