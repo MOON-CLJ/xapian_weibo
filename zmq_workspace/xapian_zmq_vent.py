@@ -7,8 +7,7 @@ sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT
-from index_utils import load_items_from_csv, send_all
-from csv2json import itemLine2Dict
+from index_utils import load_items_from_bson, load_items_from_csv, send_all
 from xapian_backend import Schema
 import time
 import zmq
@@ -32,30 +31,42 @@ if __name__ == '__main__':
     controller = context.socket(zmq.PUB)
     controller.bind("tcp://*:%s" % XAPIAN_ZMQ_CTRL_VENT_PORT)
 
-    from consts import FROM_CSV
+    from consts import FROM_BSON, FROM_CSV
+    from_bson = FROM_BSON
     from_csv = FROM_CSV
+
+    def bs_input_pre_func(item):
+        item = item[1]
+        return item
 
     def csv_input_pre_func(item):
         item = itemLine2Dict(item)
         return item
 
-    if from_csv:
+    if from_bson:
+        pre_funcs = [bs_input_pre_func]
+        bs_input = load_items_from_bson()
+        load_origin_data_func = bs_input.reads
+        count, total_cost = send_all(load_origin_data_func, sender, pre_funcs=pre_funcs)
+        bs_input.close()
+    elif from_csv:
+        pre_funcs = [csv_input_pre_func]
         from consts import CSV_FILEPATH
         if os.path.isdir(CSV_FILEPATH):
-            files = os.listdir(CSV_FILEPATH)
             total_cost = 0
             count = 0
+            files = os.listdir(CSV_FILEPATH)
             for f in files:
                 csv_input = load_items_from_csv(os.path.join(CSV_FILEPATH, f))
                 load_origin_data_func = csv_input.__iter__
-                tmp_count, tmp_cost = send_all(load_origin_data_func, sender, pre_funcs=[csv_input_pre_func])
+                tmp_count, tmp_cost = send_all(load_origin_data_func, sender, pre_funcs=pre_funcs)
                 total_cost += tmp_cost
                 count += tmp_count
                 csv_input.close()
         elif os.path.isfile(CSV_FILEPATH):
             csv_input = load_items_from_csv(CSV_FILEPATH)
             load_origin_data_func = csv_input.__iter__
-            count, total_cost = send_all(load_origin_data_func, sender, pre_funcs=[csv_input_pre_func])
+            count, total_cost = send_all(load_origin_data_func, sender, pre_funcs=pre_funcs)
             csv_input.close()
 
     # Send kill signal to workers
