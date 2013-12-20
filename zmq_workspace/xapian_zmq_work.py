@@ -2,7 +2,7 @@
 
 import sys
 import os
-ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../xapian_weibo')
+ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../xapian_weibo')
 sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
@@ -43,12 +43,12 @@ if __name__ == '__main__':
     remote_stub = args.remote_stub
 
     dbpath = XAPIAN_DB_PATH
-    if SCHEMA_VERSION not in [5]:
+    if SCHEMA_VERSION not in [1, 2, 5]:
         raise InvalidSchemaError()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, remote_stub)
 
     fill_field_funcs = []
-    if SCHEMA_VERSION == 5:
+    if SCHEMA_VERSION in [2, 5]:
         ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
         sys.path.append(ab_path)
         from consts import XAPIAN_EXTRA_FIELD
