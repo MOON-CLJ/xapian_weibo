@@ -211,7 +211,8 @@ class XapianSearch(object):
         term_iter = db.allterms_begin(prefix)
         while term_iter != db.allterms_end(prefix):
             term = term_iter.get_term()
-            yield term.lstrip(prefix)
+            termfreq = term_iter.get_termfreq()
+            yield term.lstrip(prefix), termfreq
             term_iter.next()
 
     @fields_not_empty
