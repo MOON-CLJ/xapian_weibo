@@ -6,7 +6,8 @@ ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../xapian_we
 sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
-    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH
+    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH, \
+    XAPIAN_ZMQ_PROXY_FRONTEND_PORT
 from index_utils import index_forever, InvalidSchemaError
 from xapian_index import XapianIndex
 
@@ -26,6 +27,10 @@ if __name__ == '__main__':
     # Socket to receive messages on
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
+
+    # Socket to send messages on
+    sender = context.socket(zmq.PUSH)
+    sender.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_PROXY_FRONTEND_PORT))
 
     # Socket for control input
     controller = context.socket(zmq.SUB)
@@ -59,4 +64,4 @@ if __name__ == '__main__':
             item[XAPIAN_EXTRA_FIELD] = sentiment
             return item
         fill_field_funcs.append(fill_sentiment)
-    index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs=fill_field_funcs)
+    index_forever(xapian_indexer, receiver, controller, sender, poller, fill_field_funcs=fill_field_funcs)
