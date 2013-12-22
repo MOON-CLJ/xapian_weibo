@@ -19,7 +19,7 @@ import zlib
 
 
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
-TOP_WEIBOS_REPOSTS_COUNT_LIMIT = 100
+TOP_WEIBOS_REPOSTS_COUNT_LIMIT = 1000
 GLOBAL_SENTIMENT_COUNT = "global:%s"  # sentiment,
 KEYWORD_SENTIMENT_COUNT = "keyword:%s:%s"  # keyword, sentiment,
 TOP_WEIBO_REPOSTS_COUNT_RANK = "top_weibo_rank:%s"  # sentiment,
@@ -77,9 +77,9 @@ if __name__ == '__main__':
                 r.zadd(TOP_WEIBO_REPOSTS_COUNT_RANK % sentiment, reposts_count, item['_id'])
                 r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
-            # top keywords
-            for t in terms:
-                r.zincrby(TOP_KEYWORDS_RANK % sentiment, t, 1.0)
+                # top keywords
+                for t in terms:
+                    r.zincrby(TOP_KEYWORDS_RANK % sentiment, t, 1.0)
     else:
         while 1:
             item = receiver.recv_json()
