@@ -89,7 +89,6 @@ def index_forever(xapian_indexer, receiver, controller, poller, sender=None, fil
 
         # Any waiting controller command acts as 'KILL'
         if socks and socks.get(controller) == zmq.POLLIN:
-            msg = controller.recv()
             receive_kill = True
 
 

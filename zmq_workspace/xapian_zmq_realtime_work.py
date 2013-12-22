@@ -6,13 +6,11 @@ ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../xapian_we
 sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
-    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH, \
-    XAPIAN_ZMQ_PROXY_BACKEND_PORT, XAPIAN_ZMQ_WORK_KILL_INTERVAL, \
+    XAPIAN_ZMQ_PROXY_BACKEND_PORT, \
     REDIS_HOST, REDIS_PORT
-from utils import ts_div_fifteen_m, get_now_db_no, single_word_whitelist
+from utils import get_now_db_no, single_word_whitelist
 
 import zmq
-import time
 import redis
 import cPickle as pickle
 import zlib
@@ -28,6 +26,7 @@ TOP_KEYWORDS_RANK = 'top_keywords:%s'  # sentiment,
 DOMAIN_SENTIMENT_COUNT = "domain:%s:%s"  # domain, sentiment,
 DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK = "domain:%s:top_weibo_rank:%s"  # domain, sentiment,
 DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
+
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
     return redis.StrictRedis(host, port, db)
