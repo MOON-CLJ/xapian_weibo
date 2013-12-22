@@ -69,8 +69,10 @@ def index_forever(xapian_indexer, receiver, controller, sender, poller, fill_fie
             xapian_indexer.close()
             print 'receive "KILL", worker stop, finally close db, cost: %ss' % (time.time() - tb)
             break
+        else:
+            socks = None
 
-        if socks.get(receiver) == zmq.POLLIN:
+        if socks and socks.get(receiver) == zmq.POLLIN:
             item = receiver.recv_json()
             if fill_field_funcs:
                 for func in fill_field_funcs:
@@ -85,7 +87,7 @@ def index_forever(xapian_indexer, receiver, controller, sender, poller, fill_fie
                 print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
 
         # Any waiting controller command acts as 'KILL'
-        if socks.get(controller) == zmq.POLLIN:
+        if socks and socks.get(controller) == zmq.POLLIN:
             msg = controller.recv()
             receive_kill = True
 

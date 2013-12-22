@@ -10,6 +10,7 @@ from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
     XAPIAN_ZMQ_PROXY_FRONTEND_PORT
 from index_utils import index_forever, InvalidSchemaError
 from xapian_index import XapianIndex
+from utils import load_scws, cut
 
 from argparse import ArgumentParser
 import zmq
@@ -64,4 +65,13 @@ if __name__ == '__main__':
             item[XAPIAN_EXTRA_FIELD] = sentiment
             return item
         fill_field_funcs.append(fill_sentiment)
+
+        s = load_scws()
+
+        def cut_text(item):
+            text = item['text'].encode('utf-8')
+            terms = cut(s, text)
+            item['terms'] = terms
+            return item
+        fill_field_funcs.append(cut_text)
     index_forever(xapian_indexer, receiver, controller, sender, poller, fill_field_funcs=fill_field_funcs)
