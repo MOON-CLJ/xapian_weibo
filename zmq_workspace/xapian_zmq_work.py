@@ -7,7 +7,7 @@ sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH, \
-    XAPIAN_ZMQ_PROXY_FRONTEND_PORT
+    XAPIAN_ZMQ_PROXY_FRONTEND_PORT, REALTIME_WORK_ON
 from index_utils import index_forever, InvalidSchemaError
 from xapian_index import XapianIndex
 from utils import load_scws, cut

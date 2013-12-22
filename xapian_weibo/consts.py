@@ -44,7 +44,7 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 5:
 PROD_VENV = 0
 FROM_BSON = 0
 FROM_CSV = 1
-REALTIME_WORK_ON = 1
+REALTIME_WORK_ON = 0
 if PROD_VENV:
     XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
     XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
