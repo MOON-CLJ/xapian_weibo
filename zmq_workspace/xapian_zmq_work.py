@@ -29,9 +29,11 @@ if __name__ == '__main__':
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
 
-    # Socket to send messages on
-    sender = context.socket(zmq.PUSH)
-    sender.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_PROXY_FRONTEND_PORT))
+    sender = None
+    if REALTIME_WORK_ON:
+        # Socket to send messages on
+        sender = context.socket(zmq.PUSH)
+        sender.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_PROXY_FRONTEND_PORT))
 
     # Socket for control input
     controller = context.socket(zmq.SUB)
@@ -74,4 +76,4 @@ if __name__ == '__main__':
             item['terms'] = terms
             return item
         fill_field_funcs.append(cut_text)
-    index_forever(xapian_indexer, receiver, controller, sender, poller, fill_field_funcs=fill_field_funcs)
+    index_forever(xapian_indexer, receiver, controller, poller, sender=sender, fill_field_funcs=fill_field_funcs)

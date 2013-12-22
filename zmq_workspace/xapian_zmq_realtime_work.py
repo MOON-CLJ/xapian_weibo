@@ -8,7 +8,7 @@ sys.path.append(ab_path)
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
     XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH, \
     XAPIAN_ZMQ_PROXY_BACKEND_PORT, XAPIAN_ZMQ_WORK_KILL_INTERVAL, \
-    REDIS_HOST, REDIS_PORT, REALTIME_WORK
+    REDIS_HOST, REDIS_PORT
 from utils import ts_div_fifteen_m, get_now_db_no, single_word_whitelist
 
 import zmq
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_PROXY_BACKEND_PORT))
 
-    if REALTIME_WORK_ON and SCHEMA_VERSION in [2, 5]:
+    if SCHEMA_VERSION in [2, 5]:
         # prepare
         now_db_no = get_now_db_no()
         print "redis db no now", now_db_no

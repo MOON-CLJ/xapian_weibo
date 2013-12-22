@@ -47,7 +47,7 @@ def send_all(load_origin_data_func, sender, pre_funcs=[]):
     return count, total_cost
 
 
-def index_forever(xapian_indexer, receiver, controller, sender, poller, fill_field_funcs=[]):
+def index_forever(xapian_indexer, receiver, controller, poller, sender=None, fill_field_funcs=[]):
     """
     Process index forever
     """
@@ -78,7 +78,8 @@ def index_forever(xapian_indexer, receiver, controller, sender, poller, fill_fie
                 for func in fill_field_funcs:
                     item = func(item)
             xapian_indexer.add_or_update(item)
-            sender.send_json(item)
+            if sender:
+                sender.send_json(item)
             count += 1
             if count % XAPIAN_FLUSH_DB_SIZE == 0:
                 te = time.time()
