@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from consts import FROM_BSON, FROM_CSV, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL
+from consts import FROM_BSON, FROM_CSV, XAPIAN_FLUSH_DB_SIZE, XAPIAN_ZMQ_WORK_KILL_INTERVAL, XAPIAN_ZMQ_POLL_TIMEOUT
 from bs_input import KeyValueBSONInput
 from datetime import datetime
 import time
@@ -47,7 +47,7 @@ def send_all(load_origin_data_func, sender, pre_funcs=[]):
     return count, total_cost
 
 
-def index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs=[]):
+def index_forever(xapian_indexer, receiver, controller, poller, sender=None, fill_field_funcs=[]):
     """
     Process index forever
     """
@@ -56,19 +56,9 @@ def index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs
     tb = ts
     receive_kill = False
     while 1:
-        socks = dict(poller.poll())
-        if socks.get(receiver) == zmq.POLLIN:
-            item = receiver.recv_json()
-            if fill_field_funcs:
-                for func in fill_field_funcs:
-                    item = func(item)
-            xapian_indexer.add_or_update(item)
-            count += 1
-            if count % XAPIAN_FLUSH_DB_SIZE == 0:
-                te = time.time()
-                cost = te - ts
-                ts = te
-                print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
+        evts = poller.poll(XAPIAN_ZMQ_POLL_TIMEOUT)
+        if evts:
+            socks = dict(poller.poll(XAPIAN_ZMQ_POLL_TIMEOUT))
         elif receive_kill and time.time() - tb > XAPIAN_ZMQ_WORK_KILL_INTERVAL:
             """
             定期kill，可以记录work开启的时间
@@ -79,9 +69,26 @@ def index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs
             xapian_indexer.close()
             print 'receive "KILL", worker stop, finally close db, cost: %ss' % (time.time() - tb)
             break
+        else:
+            socks = None
+
+        if socks and socks.get(receiver) == zmq.POLLIN:
+            item = receiver.recv_json()
+            if fill_field_funcs:
+                for func in fill_field_funcs:
+                    item = func(item)
+            xapian_indexer.add_or_update(item)
+            if sender:
+                sender.send_json(item)
+            count += 1
+            if count % XAPIAN_FLUSH_DB_SIZE == 0:
+                te = time.time()
+                cost = te - ts
+                ts = te
+                print '[%s] [%s] total indexed: %s, %s sec/per %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), xapian_indexer.db_folder, count, cost, XAPIAN_FLUSH_DB_SIZE)
 
         # Any waiting controller command acts as 'KILL'
-        if socks.get(controller) == zmq.POLLIN:
+        if socks and socks.get(controller) == zmq.POLLIN:
             receive_kill = True
 
 

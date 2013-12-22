@@ -2,13 +2,15 @@
 
 import sys
 import os
-ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../xapian_weibo')
+ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../xapian_weibo')
 sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
-    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH
+    XAPIAN_ZMQ_VENT_PORT, XAPIAN_ZMQ_CTRL_VENT_PORT, XAPIAN_DB_PATH, \
+    XAPIAN_ZMQ_PROXY_FRONTEND_PORT, REALTIME_WORK_ON
 from index_utils import index_forever, InvalidSchemaError
 from xapian_index import XapianIndex
+from utils import load_scws, cut
 
 from argparse import ArgumentParser
 import zmq
@@ -27,6 +29,12 @@ if __name__ == '__main__':
     receiver = context.socket(zmq.PULL)
     receiver.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_VENT_PORT))
 
+    sender = None
+    if REALTIME_WORK_ON:
+        # Socket to send messages on
+        sender = context.socket(zmq.PUSH)
+        sender.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_PROXY_FRONTEND_PORT))
+
     # Socket for control input
     controller = context.socket(zmq.SUB)
     controller.connect('tcp://%s:%s' % (XAPIAN_ZMQ_VENT_HOST, XAPIAN_ZMQ_CTRL_VENT_PORT))
@@ -43,13 +51,12 @@ if __name__ == '__main__':
     remote_stub = args.remote_stub
 
     dbpath = XAPIAN_DB_PATH
-    if SCHEMA_VERSION not in [1, 2]:
+    if SCHEMA_VERSION not in [1, 2, 5]:
         raise InvalidSchemaError()
     xapian_indexer = XapianIndex(dbpath, SCHEMA_VERSION, remote_stub)
 
-    if SCHEMA_VERSION == 1:
-        index_forever(xapian_indexer, receiver, controller, poller)
-    elif SCHEMA_VERSION == 2:
+    fill_field_funcs = []
+    if SCHEMA_VERSION in [2, 5]:
         ab_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
         sys.path.append(ab_path)
         from consts import XAPIAN_EXTRA_FIELD
@@ -59,4 +66,14 @@ if __name__ == '__main__':
             sentiment = triple_classifier(item)
             item[XAPIAN_EXTRA_FIELD] = sentiment
             return item
-        index_forever(xapian_indexer, receiver, controller, poller, fill_field_funcs=[fill_sentiment])
+        fill_field_funcs.append(fill_sentiment)
+
+        s = load_scws()
+
+        def cut_text(item):
+            text = item['text'].encode('utf-8')
+            terms = cut(s, text)
+            item['terms'] = terms
+            return item
+        fill_field_funcs.append(cut_text)
+    index_forever(xapian_indexer, receiver, controller, poller, sender=sender, fill_field_funcs=fill_field_funcs)
