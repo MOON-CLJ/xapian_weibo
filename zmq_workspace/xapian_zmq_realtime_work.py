@@ -26,6 +26,8 @@ TOP_KEYWORDS_RANK = 'top_keywords:%s'  # sentiment,
 DOMAIN_SENTIMENT_COUNT = "domain:%s:%s"  # domain, sentiment,
 DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK = "domain:%s:top_weibo_rank:%s"  # domain, sentiment,
 DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
+SENTIMENT_TOPIC_KEYWORDS = "topics:sentiment"
+DOMAIN_USERS = "domain_users:%s" # domain
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -33,15 +35,17 @@ def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
 
 
 def get_keywords():
-    "todo"
-    return ['现在']
+    r = _default_redis()
+    keywords_set = r.smembers(SENTIMENT_TOPIC_KEYWORDS)
+    return list(keywords_set)
 
 
 def get_domain_users():
-    "todo"
+    r = _default_redis()
     domain_users = {}
     for i in range(9):
-        domain_users[i] = set([2689617801])
+        domain_user_set = r.smembers(DOMAIN_USERS % i)
+        domain_users[i] = domain_user_set
 
     return domain_users
 
