@@ -2,7 +2,7 @@
 
 from xapian_backend import _database, Schema, DOCUMENT_ID_TERM_PREFIX, \
     DOCUMENT_CUSTOM_TERM_PREFIX, InvalidIndexError
-from utils import load_scws, cut, log_to_stub
+from utils import log_to_stub
 from consts import XAPIAN_DATA_DIR, XAPIAN_STUB_FILE_DIR
 from datetime import datetime
 import cPickle as pickle
@@ -89,9 +89,6 @@ def _marshal_term(term, pre_func=None):
     return term
 
 
-s = load_scws()
-
-
 def _index_field(field, document, item, schema_version, schema, term_gen):
     prefix = DOCUMENT_CUSTOM_TERM_PREFIX + field['field_name'].upper()
     field_name = field['field_name']
@@ -108,7 +105,6 @@ def _index_field(field, document, item, schema_version, schema, term_gen):
         value = _marshal_value(item.get(field_name), schema.get('pre_func', {}).get(field_name))
         document.add_value(field['column'], value)
     elif field_name == 'text':
-        text = item['text'].encode('utf-8')
-        tokens = cut(s, text)
+        terms = item['terms']
         term_gen.set_document(document)
-        term_gen.index_text_without_positions(' '.join(tokens), 1, prefix)
+        term_gen.index_text_without_positions(' '.join(terms), 1, prefix)
