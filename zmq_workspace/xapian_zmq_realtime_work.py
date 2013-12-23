@@ -26,7 +26,7 @@ TOP_KEYWORDS_RANK = 'top_keywords:%s'  # sentiment,
 DOMAIN_SENTIMENT_COUNT = "domain:%s:%s"  # domain, sentiment,
 DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK = "domain:%s:top_weibo_rank:%s"  # domain, sentiment,
 DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
-SENTIMENT_TOPIC_KEYWORDS = "topics:sentiment"
+SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
 DOMAIN_USERS = "domain_users:%s" # domain
 
 
