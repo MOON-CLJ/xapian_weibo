@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from filelock.filelock import FileLock
-from consts import XAPIAN_INDEX_LOCK_FILE
-from datetime import datetime
+from consts import XAPIAN_INDEX_LOCK_FILE, REDIS_CONF_MAX_DB_NO
+from datetime import datetime, date, timedelta
 
 import os
 import scws
@@ -187,3 +187,29 @@ def log_to_stub(stub_file_dir, dbpath, db_folder, remote_stub=False):
                 f.write(STUB_REMOTE_FILE_PER_LINE % {"host": host, "db_folder": db_folder})
             else:
                 f.write(STUB_FILE_PER_LINE % {"db_folder": db_folder})
+
+
+def ts_range2date_strs(begin_ts, end_ts):
+    begin_date = date.fromtimestamp(begin_ts)
+    end_date = date.fromtimestamp(end_ts)
+    date_strs = []
+    while (begin_date <= end_date):
+        date_strs.append(begin_date.strftime("%Y%m%d"))
+        begin_date += timedelta(days=1)
+
+    return date_strs
+
+
+def gen_mset_iter(xapian_weibo_search, mset, fields):
+    def result_generator():
+        for match in mset:
+            yield xapian_weibo_search._extract_item(match.document, fields)
+    return result_generator
+
+
+def ts_div_fifteen_m():
+    return int(time.time()) / (15 * 60)
+
+
+def get_now_db_no():
+    return ts_div_fifteen_m() % (REDIS_CONF_MAX_DB_NO - 1) + 1

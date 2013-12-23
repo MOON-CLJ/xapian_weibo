@@ -1,0 +1,14 @@
+schema:
+    user
+    weibo
+
+from_bson:
+    true
+
+usage:
+    python zmq_workspace/1/xapian_zmq_vent.py
+    python zmq_workspace/1/xapian_zmq_work.py [-r]
+
+current limit:
+    1 .. n weibo
+    1 .. 1 user
