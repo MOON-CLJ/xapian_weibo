@@ -59,26 +59,28 @@ def realtime_sentiment_cal(item):
 
     terms = [term.encode('utf-8') for term in item['terms']]
     terms = filter(lambda x: x not in single_word_whitelist, terms)
-
-    for t in terms:
-        if t in keywords:
-            # keyword sentiment
-            r.incr(KEYWORD_SENTIMENT_COUNT % (t, sentiment))
-
     reposts_count = item['reposts_count']
+
     if reposts_count > TOP_WEIBOS_REPOSTS_COUNT_LIMIT:
         # top weibos
         r.zadd(TOP_WEIBO_REPOSTS_COUNT_RANK % sentiment, reposts_count, item['_id'])
         r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
-        flag_set = set()
         for t in terms:
             # top keywords
             r.zincrby(TOP_KEYWORDS_RANK % sentiment, t, 1.0)
 
-            if t in keywords and t not in flag_set:
+    flag_set = set()
+    for t in terms:
+        if t in keywords:
+            # keyword sentiment
+            r.incr(KEYWORD_SENTIMENT_COUNT % (t, sentiment))
+
+            if t not in flag_set:
                 # keyword top weibos
                 r.zadd(KEYWORD_TOP_WEIBO_REPOSTS_COUNT_RANK % (t, sentiment), reposts_count, item['_id'])
+                r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
+
                 for tt in terms:
                     # keyword top keywords
                     r.zincrby(KEYWORD_TOP_KEYWORDS_RANK % (t, sentiment), tt, 1.0)
@@ -89,14 +91,13 @@ def realtime_sentiment_cal(item):
             # domain sentiment
             r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
 
-            if reposts_count > TOP_WEIBOS_REPOSTS_COUNT_LIMIT:
-                # domain top weibos
-                r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
-                # 不用再存微博了，上面已经存过一次了
+            # domain top weibos
+            r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
+            r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
-                for t in terms:
-                    # domain top keywords
-                    r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
+            for t in terms:
+                # domain top keywords
+                r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
 if __name__ == '__main__':
