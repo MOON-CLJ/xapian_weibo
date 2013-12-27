@@ -36,8 +36,8 @@ DOMAIN_USERS = "domain_users:%s"  # domain
 USER_DOMAIN = "user_domain" # user domain hash,
 GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
 GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
-DOMAIN_ACTIVE_COUNT = "domain_active_%s" # date as '20131227',
-DOMAIN_IMPORTANT_COUNT = "domain_important_%s" # date as '20131227',
+DOMAIN_ACTIVE_COUNT = "domain_active_%s:%s" # date as '20131227', domain
+DOMAIN_IMPORTANT_COUNT = "domain_important_%s:%s" # date as '20131227', domain
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -61,11 +61,11 @@ def get_domain_users():
 
 
 def user2domain(uid):
-    domainid = global_r0.hget(USER_DOMAIN, uid)
+    domainid = global_r0.hget(USER_DOMAIN, str(uid))
     if not domainid:
         domainid = -1 # not taged label
     
-    return domainid
+    return int(domainid)
 
 
 def get_now_datestr():
@@ -127,7 +127,8 @@ def realtime_identify_cal(item):
     domainid = user2domain(uid)
     reposts_count = item['reposts_count']
     comments_count = item['comments_count']
-    attitudes_count = item['attitudes_count']
+    attitudes_count = 0
+    # attitudes_count = item['attitudes_count'] # 此字段缺失
     important = reposts_count + comments_count + attitudes_count
 
     # global active count
@@ -137,10 +138,10 @@ def realtime_identify_cal(item):
     global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
 
     # domain active count
-    global_r0.hincrby(DOMAIN_ACTIVE_COUNT % now_datestr, domainid)
+    global_r0.hincrby(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid), uid)
 
     # domain important count
-    global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % now_datestr, domainid, important)
+    global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), uid, important)
 
 
 if __name__ == '__main__':
