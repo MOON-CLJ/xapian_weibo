@@ -14,6 +14,8 @@ import zmq
 import redis
 import cPickle as pickle
 import zlib
+import time
+import datetime
 
 
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
@@ -32,11 +34,11 @@ SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
 DOMAIN_USERS = "domain_users:%s"  # domain
 
 # realtime_identify_work
-USER_DOMAIN = "user_domain" # user domain hash
-GLOBAL_ACTIVE_COUNT = "global_active:%s" # uid,
-GLOBAL_IMPORTANT_COUNT = "global_important:%s" # uid,
-DOMAIN_ACTIVE_COUNT = "domain_active:%s" # domain,
-DOMAIN_IMPORTANT_COUNT = "domain_important:%s" # domain,  
+USER_DOMAIN = "user_domain" # user domain hash,
+GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
+GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
+DOMAIN_ACTIVE_COUNT = "domain_active_%s:%s" # date as '20131227', domain, 
+DOMAIN_IMPORTANT_COUNT = "domain_important_%s:%s" # date as '20131227', domain,  
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -65,6 +67,12 @@ def user2domain(uid):
         domainid = -1 # not taged label
     
     return domainid
+
+
+def get_now_datestr():
+    now_ts = time.time()
+    datestr = datetime.date.fromtimestamp(now_ts).isoformat().replace('-', '') # 20131227
+    return datestr
 
 
 def realtime_sentiment_cal(item):
@@ -116,22 +124,25 @@ def realtime_sentiment_cal(item):
 
 
 def realtime_identify_cal(item):
+    now_datestr = get_now_datestr()
     uid = item['user']
-    # global active count
-    r0.incr(GLOBAL_ACTIVE_COUNT % uid)
-
+    domainid = user2domain(uid)
     reposts_count = item['reposts_count']
     comments_count = item['comments_count']
     attitudes_count = item['attitudes_count']
     important = reposts_count + comments_count + attitudes_count
-    # global important count
-    r0.incr(GLOBAL_IMPORTANT_COUNT % uid, important)
 
-    domainid = user2domain(uid)
+    # global active count
+    global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
+
+    # global important count
+    global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
+
     # domain active count
-    r0.incr(DOMAIN_ACTIVE_COUNT % domainid)
+    global_r0.incr(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid))
+    
     # domain important count
-    r0.incr(DOMAIN_IMPORTANT_COUNT % domainid, important)
+    global_r0.incr(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), important)
 
 
 if __name__ == '__main__':
@@ -152,7 +163,7 @@ if __name__ == '__main__':
         now_db_no = get_now_db_no()
         print "redis db no now", now_db_no
         global_r = _default_redis(db=now_db_no)
-        r0 = _default_redis()
+        global_r0 = _default_redis()
 
         while 1:
             new_db_no = get_now_db_no()
