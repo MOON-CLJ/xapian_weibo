@@ -14,6 +14,7 @@ import zmq
 import redis
 import cPickle as pickle
 import zlib
+import datetime
 
 
 SCHEMA_VERSION = XAPIAN_INDEX_SCHEMA_VERSION
@@ -30,6 +31,13 @@ DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK = "domain:%s:top_weibo_rank:%s"  # domain, s
 DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
 SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
 DOMAIN_USERS = "domain_users:%s"  # domain
+
+# realtime_identify_work
+USER_DOMAIN = "user_domain" # user domain hash,
+GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
+GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
+DOMAIN_ACTIVE_COUNT = "domain_active_%s" # date as '20131227',
+DOMAIN_IMPORTANT_COUNT = "domain_important_%s" # date as '20131227',
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -50,6 +58,19 @@ def get_domain_users():
         domain_users[i] = domain_user_set
 
     return domain_users
+
+
+def user2domain(uid):
+    domainid = global_r0.hget(USER_DOMAIN, uid)
+    if not domainid:
+        domainid = -1 # not taged label
+    
+    return domainid
+
+
+def get_now_datestr():
+    datestr = datetime.datetime.utcnow().strftime("%Y%m%d") # 20131227
+    return datestr
 
 
 def realtime_sentiment_cal(item):
@@ -100,6 +121,28 @@ def realtime_sentiment_cal(item):
                 global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
+def realtime_identify_cal(item):
+    now_datestr = get_now_datestr()
+    uid = item['user']
+    domainid = user2domain(uid)
+    reposts_count = item['reposts_count']
+    comments_count = item['comments_count']
+    attitudes_count = item['attitudes_count']
+    important = reposts_count + comments_count + attitudes_count
+
+    # global active count
+    global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
+
+    # global important count
+    global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
+
+    # domain active count
+    global_r0.hincrby(DOMAIN_ACTIVE_COUNT % now_datestr, domainid)
+
+    # domain important count
+    global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % now_datestr, domainid, important)
+
+
 if __name__ == '__main__':
     """
     cd data/
@@ -118,6 +161,7 @@ if __name__ == '__main__':
         now_db_no = get_now_db_no()
         print "redis db no now", now_db_no
         global_r = _default_redis(db=now_db_no)
+        global_r0 = _default_redis()
 
         while 1:
             new_db_no = get_now_db_no()
@@ -130,6 +174,7 @@ if __name__ == '__main__':
 
             item = receiver.recv_json()
             realtime_sentiment_cal(item)
+            realtime_identify_cal(item)
     else:
         while 1:
             item = receiver.recv_json()
