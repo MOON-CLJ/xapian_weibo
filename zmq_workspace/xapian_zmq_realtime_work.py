@@ -31,6 +31,13 @@ DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
 SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
 DOMAIN_USERS = "domain_users:%s"  # domain
 
+# realtime_identify_work
+USER_DOMAIN = "user_domain" # user domain hash
+GLOBAL_ACTIVE_COUNT = "global_active:%s" # uid,
+GLOBAL_IMPORTANT_COUNT = "global_important:%s" # uid,
+DOMAIN_ACTIVE_COUNT = "domain_active:%s" # domain,
+DOMAIN_IMPORTANT_COUNT = "domain_important:%s" # domain,  
+
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
     return redis.StrictRedis(host, port, db)
@@ -50,6 +57,14 @@ def get_domain_users():
         domain_users[i] = domain_user_set
 
     return domain_users
+
+
+def user2domain(uid):
+    domainid = r0.hget(USER_DOMAIN, uid)
+    if not domainid:
+        domainid = -1 # not taged label
+    
+    return domainid
 
 
 def realtime_sentiment_cal(item):
@@ -100,6 +115,25 @@ def realtime_sentiment_cal(item):
                 global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
+def realtime_identify_cal(item):
+    uid = item['user']
+    # global active count
+    r0.incr(GLOBAL_ACTIVE_COUNT % uid)
+
+    reposts_count = item['reposts_count']
+    comments_count = item['comments_count']
+    attitudes_count = item['attitudes_count']
+    important = reposts_count + comments_count + attitudes_count
+    # global important count
+    r0.incr(GLOBAL_IMPORTANT_COUNT % uid, important)
+
+    domainid = user2domain(uid)
+    # domain active count
+    r0.incr(DOMAIN_ACTIVE_COUNT % domainid)
+    # domain important count
+    r0.incr(DOMAIN_IMPORTANT_COUNT % domainid, important)
+
+
 if __name__ == '__main__':
     """
     cd data/
@@ -118,6 +152,7 @@ if __name__ == '__main__':
         now_db_no = get_now_db_no()
         print "redis db no now", now_db_no
         global_r = _default_redis(db=now_db_no)
+        r0 = _default_redis()
 
         while 1:
             new_db_no = get_now_db_no()
@@ -130,6 +165,7 @@ if __name__ == '__main__':
 
             item = receiver.recv_json()
             realtime_sentiment_cal(item)
+            realtime_identify_cal(item)
     else:
         while 1:
             item = receiver.recv_json()
