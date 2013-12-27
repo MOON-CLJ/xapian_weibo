@@ -14,7 +14,6 @@ import zmq
 import redis
 import cPickle as pickle
 import zlib
-import time
 import datetime
 
 
@@ -71,7 +70,7 @@ def user2domain(uid):
 
 def get_now_datestr():
     now_ts = time.time()
-    datestr = datetime.date.fromtimestamp(now_ts).isoformat().replace('-', '') # 20131227
+    datestr = datetime.datetime.utcnow().strftime("%Y%m%d") # 20131227
     return datestr
 
 
