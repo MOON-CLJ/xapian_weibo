@@ -69,7 +69,6 @@ def user2domain(uid):
 
 
 def get_now_datestr():
-    now_ts = time.time()
     datestr = datetime.datetime.utcnow().strftime("%Y%m%d") # 20131227
     return datestr
 
