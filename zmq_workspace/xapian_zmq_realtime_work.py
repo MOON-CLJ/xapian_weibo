@@ -127,7 +127,8 @@ def realtime_identify_cal(item):
     domainid = user2domain(uid)
     reposts_count = item['reposts_count']
     comments_count = item['comments_count']
-    attitudes_count = item['attitudes_count']
+    attitudes_count = 0
+    # attitudes_count = item['attitudes_count'] # 此字段缺失
     important = reposts_count + comments_count + attitudes_count
 
     # global active count
