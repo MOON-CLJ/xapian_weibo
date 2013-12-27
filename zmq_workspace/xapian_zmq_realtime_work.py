@@ -62,7 +62,7 @@ def get_domain_users():
 
 
 def user2domain(uid):
-    domainid = r0.hget(USER_DOMAIN, uid)
+    domainid = global_r0.hget(USER_DOMAIN, uid)
     if not domainid:
         domainid = -1 # not taged label
     
@@ -140,7 +140,7 @@ def realtime_identify_cal(item):
 
     # domain active count
     global_r0.incr(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid))
-    
+
     # domain important count
     global_r0.incr(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), important)
 
