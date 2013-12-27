@@ -61,11 +61,11 @@ def get_domain_users():
 
 
 def user2domain(uid):
-    domainid = global_r0.hget(USER_DOMAIN, uid)
+    domainid = global_r0.hget(USER_DOMAIN, str(uid))
     if not domainid:
         domainid = -1 # not taged label
     
-    return domainid
+    return int(domainid)
 
 
 def get_now_datestr():
