@@ -37,16 +37,16 @@ def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
 
 
 def get_keywords():
-    r = _default_redis()
-    keywords_set = r.smembers(SENTIMENT_TOPIC_KEYWORDS)
+    r0 = _default_redis()
+    keywords_set = r0.smembers(SENTIMENT_TOPIC_KEYWORDS)
     return keywords_set
 
 
 def get_domain_users():
-    r = _default_redis()
+    r0 = _default_redis()
     domain_users = {}
     for i in range(9):
-        domain_user_set = r.smembers(DOMAIN_USERS % i)
+        domain_user_set = r0.smembers(DOMAIN_USERS % i)
         domain_users[i] = domain_user_set
 
     return domain_users
@@ -55,7 +55,7 @@ def get_domain_users():
 def realtime_sentiment_cal(item):
     sentiment = item['sentiment']
     # global sentiment
-    r.incr(GLOBAL_SENTIMENT_COUNT % sentiment)
+    global_r.incr(GLOBAL_SENTIMENT_COUNT % sentiment)
 
     terms = [term.encode('utf-8') for term in item['terms']]
     terms = filter(lambda x: x not in single_word_whitelist, terms)
@@ -63,41 +63,41 @@ def realtime_sentiment_cal(item):
 
     if reposts_count > TOP_WEIBOS_REPOSTS_COUNT_LIMIT:
         # top weibos
-        r.zadd(TOP_WEIBO_REPOSTS_COUNT_RANK % sentiment, reposts_count, item['_id'])
-        r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
+        global_r.zadd(TOP_WEIBO_REPOSTS_COUNT_RANK % sentiment, reposts_count, item['_id'])
+        global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
         for t in terms:
             # top keywords
-            r.zincrby(TOP_KEYWORDS_RANK % sentiment, t, 1.0)
+            global_r.zincrby(TOP_KEYWORDS_RANK % sentiment, t, 1.0)
 
     flag_set = set()
     for t in terms:
-        if t in keywords:
+        if t in global_keywords:
             # keyword sentiment
-            r.incr(KEYWORD_SENTIMENT_COUNT % (t, sentiment))
+            global_r.incr(KEYWORD_SENTIMENT_COUNT % (t, sentiment))
 
             if t not in flag_set:
                 # keyword top weibos
-                r.zadd(KEYWORD_TOP_WEIBO_REPOSTS_COUNT_RANK % (t, sentiment), reposts_count, item['_id'])
-                r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
+                global_r.zadd(KEYWORD_TOP_WEIBO_REPOSTS_COUNT_RANK % (t, sentiment), reposts_count, item['_id'])
+                global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
                 for tt in terms:
                     # keyword top keywords
-                    r.zincrby(KEYWORD_TOP_KEYWORDS_RANK % (t, sentiment), tt, 1.0)
+                    global_r.zincrby(KEYWORD_TOP_KEYWORDS_RANK % (t, sentiment), tt, 1.0)
                 flag_set.add(t)
 
-    for domain, d_users in domain_users.iteritems():
+    for domain, d_users in global_domain_users.iteritems():
         if item['user'] in d_users:
             # domain sentiment
-            r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
+            global_r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
 
             # domain top weibos
-            r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
-            r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
+            global_r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
+            global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
             for t in terms:
                 # domain top keywords
-                r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
+                global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
 if __name__ == '__main__':
@@ -113,18 +113,20 @@ if __name__ == '__main__':
 
     if SCHEMA_VERSION in [2, 5]:
         # prepare
-        keywords = get_keywords()
-        domain_users = get_domain_users()
+        global_keywords = get_keywords()
+        global_domain_users = get_domain_users()
         now_db_no = get_now_db_no()
         print "redis db no now", now_db_no
-        r = _default_redis(db=now_db_no)
+        global_r = _default_redis(db=now_db_no)
 
         while 1:
             new_db_no = get_now_db_no()
             if new_db_no != now_db_no:
+                global_keywords = get_keywords()
+                global_domain_users = get_domain_users()
                 now_db_no = new_db_no
                 print "redis db no now", now_db_no
-                r = _default_redis(db=now_db_no)
+                global_r = _default_redis(db=now_db_no)
 
             item = receiver.recv_json()
             realtime_sentiment_cal(item)
