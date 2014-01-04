@@ -14,6 +14,7 @@ import zmq
 import redis
 import cPickle as pickle
 import zlib
+import time
 import datetime
 
 
@@ -69,7 +70,8 @@ def user2domain(uid):
 
 
 def get_now_datestr():
-    datestr = datetime.datetime.utcnow().strftime("%Y%m%d") # 20131227
+    now_ts = time.time()
+    datestr = datetime.date.fromtimestamp(now_ts).isoformat().replace('-', '') # 20131227
     return datestr
 
 
@@ -107,18 +109,17 @@ def realtime_sentiment_cal(item):
                     global_r.zincrby(KEYWORD_TOP_KEYWORDS_RANK % (t, sentiment), tt, 1.0)
                 flag_set.add(t)
 
-    for domain, d_users in global_domain_users.iteritems():
-        if item['user'] in d_users:
-            # domain sentiment
-            global_r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
+    domain = user2domain(item['user'])
+    # domain sentiment
+    global_r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
 
-            # domain top weibos
-            global_r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
-            global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
+    # domain top weibos
+    global_r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
+    global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
-            for t in terms:
-                # domain top keywords
-                global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
+    for t in terms:
+        # domain top keywords
+        global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
 def realtime_identify_cal(item):
