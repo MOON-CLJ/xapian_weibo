@@ -31,14 +31,11 @@ DOMAIN_SENTIMENT_COUNT = "domain:%s:%s"  # domain, sentiment,
 DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK = "domain:%s:top_weibo_rank:%s"  # domain, sentiment,
 DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
 SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
-DOMAIN_USERS = "domain_users:%s"  # domain
 
 # realtime_identify_work
 USER_DOMAIN = "user_domain" # user domain hash,
-GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
-GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
-DOMAIN_ACTIVE_COUNT = "domain_active_%s:%s" # date as '20131227', domain
-DOMAIN_IMPORTANT_COUNT = "domain_important_%s:%s" # date as '20131227', domain
+USER_NAME_UID = "user_name_uid" # user name-uid hash
+USER_COUNT = "user_count:%s:%s" # date as '20131227', uid
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -51,22 +48,20 @@ def get_keywords():
     return keywords_set
 
 
-def get_domain_users():
-    r0 = _default_redis()
-    domain_users = {}
-    for i in range(9):
-        domain_user_set = r0.smembers(DOMAIN_USERS % i)
-        domain_users[i] = domain_user_set
-
-    return domain_users
-
-
 def user2domain(uid):
     domainid = global_r0.hget(USER_DOMAIN, str(uid))
     if not domainid:
         domainid = -1 # not taged label
     
     return int(domainid)
+
+
+def username2uid(name):
+    uid = global_r0.hget(USER_NAME_UID, str(name))
+    if not uid:
+        return None
+
+    return int(uid)
 
 
 def get_now_datestr():
@@ -132,17 +127,30 @@ def realtime_identify_cal(item):
     # attitudes_count = item['attitudes_count'] # 此字段缺失
     important = reposts_count + comments_count + attitudes_count
 
-    # global active count
-    global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
+    # 更新该条微博发布用户的重要度、领域
+    global_r0.hset(USER_COUNT % (now_datestr, uid), 'domain', domainid)
 
-    # global important count
-    global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
+    global_r0.hincrby(USER_COUNT % (now_datestr, uid), 'active')
 
-    # domain active count
-    global_r0.hincrby(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid), uid)
+    global_r0.hincrby(USER_COUNT % (now_datestr, uid), 'important', important)
+    
+    # 更新直接转发或原创用户的重要度 + 1
+    retweeted_uid = item['retweeted_uid']
+    if retweeted_uid != 0:
+        # 该条微博为转发微博
+        text = item['text']
+        repost_users = re.findall('//@([a-zA-Z-_\u0391-\uFFE5]+)', text)
 
-    # domain important count
-    global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), uid, important)
+        if len(repost_users):
+            direct_username = repost_users[0]
+            direct_uid = username2uid(direct_username)
+
+            if direct_uid:
+                retweeted_uid = direct_uid
+
+        global_r0.hset(USER_COUNT % (now_datestr, retweeted_uid), 'domain', user2domain(retweeted_uid))
+
+        global_r0.hincrby(USER_COUNT % (now_datestr, retweeted_uid), 'important')
 
 
 if __name__ == '__main__':
@@ -159,7 +167,6 @@ if __name__ == '__main__':
     if SCHEMA_VERSION in [2, 5]:
         # prepare
         global_keywords = get_keywords()
-        global_domain_users = get_domain_users()
         now_db_no = get_now_db_no()
         print "redis db no now", now_db_no
         global_r = _default_redis(db=now_db_no)
@@ -169,7 +176,6 @@ if __name__ == '__main__':
             new_db_no = get_now_db_no()
             if new_db_no != now_db_no:
                 global_keywords = get_keywords()
-                global_domain_users = get_domain_users()
                 now_db_no = new_db_no
                 print "redis db no now", now_db_no
                 global_r = _default_redis(db=now_db_no)
