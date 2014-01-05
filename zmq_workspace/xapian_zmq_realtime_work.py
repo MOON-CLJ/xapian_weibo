@@ -35,7 +35,10 @@ SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
 # realtime_identify_work
 USER_DOMAIN = "user_domain" # user domain hash,
 USER_NAME_UID = "user_name_uid" # user name-uid hash
-USER_COUNT = "user_count:%s" # date as '20131227',
+GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
+GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
+DOMAIN_ACTIVE_COUNT = "domain_active_%s:%s" # date as '20131227', domain
+DOMAIN_IMPORTANT_COUNT = "domain_important_%s:%s" # date as '20131227', domain
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -62,25 +65,6 @@ def username2uid(name):
         return None
 
     return int(uid)
-
-
-def update_active_important_domain(uid, delta_important, delta_active=1):
-    active_important_domain = global_r0.hget(USER_COUNT % now_datestr, str(uid))
-
-    if active_important_domain:
-        _active, _important, _domain = active_important_domain.split('_')
-        _active = int(_active)
-        _important = int(_important)
-        _active += delta_active
-        _important += delta_important
-    else:
-        _domain = user2domain(uid)
-        _active = delta_active
-        _important = delta_important
-
-    active_important_domain = str(_active) + '_' + str(_important) + '_' + str(_domain)
-
-    return active_important_domain
 
 
 def get_now_datestr():
@@ -145,11 +129,13 @@ def realtime_identify_cal(item):
     # attitudes_count = item['attitudes_count'] # 此字段缺失
     important = reposts_count + comments_count + attitudes_count
 
-    # 更新该条微博发布用户的重要度、活跃度、领域
-    active_important_domain = update_active_important_domain(uid, important)
-    global_r0.hset(USER_COUNT % now_datestr, uid, active_important_domain)
+    # 更新该条微博发布用户的重要度、活跃度
+    global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
+    global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
+    global_r0.hincrby(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid), uid)
+    global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), uid, important)
     
-    # 更新直接转发或原创用户的重要度 + 1
+    # 更新直接转发或原创用户的重要度 + 1,活跃度不变
     retweeted_uid = item['retweeted_uid']
     if retweeted_uid != 0:
         # 该条微博为转发微博
@@ -163,8 +149,12 @@ def realtime_identify_cal(item):
             if direct_uid:
                 retweeted_uid = direct_uid
 
-        active_important_domain = update_active_important_domain(retweeted_uid, 1, 0)
-        global_r0.hset(USER_COUNT % now_datestr, uid, active_important_domain)
+        domainid = user2domain(retweeted_uid)
+
+        global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, retweeted_uid, 0)
+        global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, retweeted_uid)
+        global_r0.hincrby(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid), retweeted_uid, 0)
+        global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), retweeted_uid)
 
 
 if __name__ == '__main__':
