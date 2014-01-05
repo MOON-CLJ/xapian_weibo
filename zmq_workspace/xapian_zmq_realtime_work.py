@@ -15,7 +15,6 @@ import zmq
 import redis
 import cPickle as pickle
 import zlib
-import time
 import datetime
 
 
@@ -66,9 +65,7 @@ def username2uid(name):
 
 
 def get_now_datestr():
-    now_ts = time.time()
-    datestr = datetime.date.fromtimestamp(now_ts).isoformat().replace('-', '') # 20131227
-    return datestr
+    return datetime.datetime.now().strftime("%Y%m%d")
 
 
 def realtime_sentiment_cal(item):
