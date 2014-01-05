@@ -37,8 +37,6 @@ USER_DOMAIN = "user_domain" # user domain hash,
 USER_NAME_UID = "user_name_uid" # user name-uid hash
 GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
 GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
-DOMAIN_ACTIVE_COUNT = "domain_active_%s:%s" # date as '20131227', domain
-DOMAIN_IMPORTANT_COUNT = "domain_important_%s:%s" # date as '20131227', domain
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -122,7 +120,6 @@ def realtime_sentiment_cal(item):
 def realtime_identify_cal(item):
     now_datestr = get_now_datestr()
     uid = item['user']
-    domainid = user2domain(uid)
     reposts_count = item['reposts_count']
     comments_count = item['comments_count']
     attitudes_count = 0
@@ -132,8 +129,6 @@ def realtime_identify_cal(item):
     # 更新该条微博发布用户的重要度、活跃度
     global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
     global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
-    global_r0.hincrby(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid), uid)
-    global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), uid, important)
     
     # 更新直接转发或原创用户的重要度 + 1,活跃度不变
     retweeted_uid = item['retweeted_uid']
@@ -149,12 +144,8 @@ def realtime_identify_cal(item):
             if direct_uid:
                 retweeted_uid = direct_uid
 
-        domainid = user2domain(retweeted_uid)
-
         global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, retweeted_uid, 0)
         global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, retweeted_uid)
-        global_r0.hincrby(DOMAIN_ACTIVE_COUNT % (now_datestr, domainid), retweeted_uid, 0)
-        global_r0.hincrby(DOMAIN_IMPORTANT_COUNT % (now_datestr, domainid), retweeted_uid)
 
 
 if __name__ == '__main__':
