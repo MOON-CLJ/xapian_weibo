@@ -173,7 +173,7 @@ if __name__ == '__main__':
                 now_db_no = new_db_no
                 print "redis db no now", now_db_no
                 global_r = _default_redis(db=now_db_no)
-                
+
             item = receiver.recv_json()
             realtime_sentiment_cal(item)
             realtime_identify_cal(item)
