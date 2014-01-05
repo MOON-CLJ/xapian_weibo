@@ -103,8 +103,8 @@ def realtime_sentiment_cal(item):
                     global_r.zincrby(KEYWORD_TOP_KEYWORDS_RANK % (t, sentiment), tt, 1.0)
                 flag_set.add(t)
 
+    domain = user2domain(item['user'])
     if domain != -1 and domain != 20:
-        domain = user2domain(item['user'])
         # domain sentiment
         global_r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
 
@@ -144,7 +144,6 @@ def realtime_identify_cal(item):
             if direct_uid:
                 retweeted_uid = direct_uid
 
-        global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, retweeted_uid, 0)
         global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, retweeted_uid)
 
 
@@ -174,7 +173,7 @@ if __name__ == '__main__':
                 now_db_no = new_db_no
                 print "redis db no now", now_db_no
                 global_r = _default_redis(db=now_db_no)
-
+                
             item = receiver.recv_json()
             realtime_sentiment_cal(item)
             realtime_identify_cal(item)
