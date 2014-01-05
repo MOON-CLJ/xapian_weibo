@@ -35,7 +35,7 @@ SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
 # realtime_identify_work
 USER_DOMAIN = "user_domain" # user domain hash,
 USER_NAME_UID = "user_name_uid" # user name-uid hash
-USER_COUNT = "user_count:%s:%s" # date as '20131227', uid
+USER_COUNT = "user_count:%s" # date as '20131227',
 
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
@@ -62,6 +62,25 @@ def username2uid(name):
         return None
 
     return int(uid)
+
+
+def update_active_important_domain(uid, delta_important, delta_active=1):
+    active_important_domain = global_r0.hget(USER_COUNT % now_datestr, str(uid))
+
+    if active_important_domain:
+        _active, _important, _domain = active_important_domain.split('_')
+        _active = int(_active)
+        _important = int(_important)
+        _active += delta_active
+        _important += delta_important
+    else:
+        _domain = user2domain(uid)
+        _active = delta_active
+        _important = delta_important
+
+    active_important_domain = str(_active) + '_' + str(_important) + '_' + str(_domain)
+
+    return active_important_domain
 
 
 def get_now_datestr():
@@ -102,17 +121,18 @@ def realtime_sentiment_cal(item):
                     global_r.zincrby(KEYWORD_TOP_KEYWORDS_RANK % (t, sentiment), tt, 1.0)
                 flag_set.add(t)
 
-    domain = user2domain(item['user'])
-    # domain sentiment
-    global_r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
+    if domain != -1 and domain != 20:
+        domain = user2domain(item['user'])
+        # domain sentiment
+        global_r.incr(DOMAIN_SENTIMENT_COUNT % (domain, sentiment))
 
-    # domain top weibos
-    global_r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
-    global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
+        # domain top weibos
+        global_r.zadd(DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK % (domain, sentiment), reposts_count, item['_id'])
+        global_r.set(TOP_WEIBO_KEY % item['_id'], zlib.compress(pickle.dumps(item, pickle.HIGHEST_PROTOCOL), zlib.Z_BEST_COMPRESSION))
 
-    for t in terms:
-        # domain top keywords
-        global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
+        for t in terms:
+            # domain top keywords
+            global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
 def realtime_identify_cal(item):
@@ -125,12 +145,9 @@ def realtime_identify_cal(item):
     # attitudes_count = item['attitudes_count'] # 此字段缺失
     important = reposts_count + comments_count + attitudes_count
 
-    # 更新该条微博发布用户的重要度、领域
-    global_r0.hset(USER_COUNT % (now_datestr, uid), 'domain', domainid)
-
-    global_r0.hincrby(USER_COUNT % (now_datestr, uid), 'active')
-
-    global_r0.hincrby(USER_COUNT % (now_datestr, uid), 'important', important)
+    # 更新该条微博发布用户的重要度、活跃度、领域
+    active_important_domain = update_active_important_domain(uid, important)
+    global_r0.hset(USER_COUNT % now_datestr, uid, active_important_domain)
     
     # 更新直接转发或原创用户的重要度 + 1
     retweeted_uid = item['retweeted_uid']
@@ -146,9 +163,8 @@ def realtime_identify_cal(item):
             if direct_uid:
                 retweeted_uid = direct_uid
 
-        global_r0.hset(USER_COUNT % (now_datestr, retweeted_uid), 'domain', user2domain(retweeted_uid))
-
-        global_r0.hincrby(USER_COUNT % (now_datestr, retweeted_uid), 'important')
+        active_important_domain = update_active_important_domain(retweeted_uid, 1, 0)
+        global_r0.hset(USER_COUNT % now_datestr, uid, active_important_domain)
 
 
 if __name__ == '__main__':
