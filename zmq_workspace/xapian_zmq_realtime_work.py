@@ -130,16 +130,14 @@ def realtime_identify_cal(item):
     global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
     global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
     
-    # 更新直接转发或原创用户的重要度 + 1,活跃度不变
+    # 更新直接转发或原创用户的重要度 + 1, 活跃度不变, 有可能高估了用户的重要度
     retweeted_uid = item['retweeted_uid']
     if retweeted_uid != 0:
         # 该条微博为转发微博
         text = item['text']
-        repost_users = re.findall('//@([a-zA-Z-_\u0391-\uFFE5]+)', text)
-
-        if len(repost_users):
-            direct_username = repost_users[0]
-            direct_uid = username2uid(direct_username)
+        repost_user = re.search('//@([a-zA-Z-_\u0391-\uFFE5]+)', text)
+        if repost_user:
+            direct_uid = username2uid(repost_user)
 
             if direct_uid:
                 retweeted_uid = direct_uid
