@@ -46,8 +46,8 @@ FROM_BSON = 0
 FROM_CSV = 1
 REALTIME_WORK_ON = 1
 if PROD_VENV:
-    XAPIAN_DATA_DIR = '/media/data/realtime'
-    XAPIAN_STUB_FILE_DIR = '/media/data/realtime/stub'
+    XAPIAN_DATA_DIR = '/media/data'
+    XAPIAN_STUB_FILE_DIR = '/media/data/stub'
     if XAPIAN_INDEX_SCHEMA_VERSION == 1:
         XAPIAN_DB_FOLDER_PREFIX = '/var/lib/xapian_weibo/20130000'
     XAPIAN_ZMQ_VENT_HOST = '192.168.2.31'  # 分发机器的ip
@@ -69,7 +69,7 @@ if PROD_VENV:
             raise
     if FROM_CSV:
         if XAPIAN_INDEX_SCHEMA_VERSION == 5:
-            CSV_FILEPATH = '/home/ubuntu12/dev/original_data/csv/20130927'  # 文件夹时末尾需要/
+            CSV_FILEPATH = '/media/data/original_data/csv/20130928/'  # 文件夹时末尾需要/
 else:
     XAPIAN_DATA_DIR = '/home/arthas/dev/data'
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/data/stub'
