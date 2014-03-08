@@ -38,6 +38,10 @@ USER_NAME_UID = "user_name_uid" # user name-uid hash
 GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
 GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
 
+# profile_keywords_cal
+USER_KEYWORDS = "user_keywords_%s" # user keywords sorted set, uid,
+USER_SET = "user_profile" # user set,
+
 
 def _default_redis(host=REDIS_HOST, port=REDIS_PORT, db=0):
     return redis.StrictRedis(host, port, db)
@@ -145,6 +149,15 @@ def realtime_identify_cal(item):
         global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, retweeted_uid)
 
 
+def realtime_profile_keywords_cal(item):
+    terms_cx = item['terms_cx']
+    uid = item['user']
+    for term, cx in terms_cx:
+        if cx == 'n':
+            global_r.zincrby(USER_KEYWORDS % uid, term, 1.0)
+            global_r.sadd(USER_SET, uid)
+
+
 if __name__ == '__main__':
     """
     cd data/
@@ -174,7 +187,8 @@ if __name__ == '__main__':
 
             item = receiver.recv_json()
             realtime_sentiment_cal(item)
-            realtime_identify_cal(item)
+            #realtime_identify_cal(item)
+            realtime_profile_keywords_cal(item)
     else:
         while 1:
             item = receiver.recv_json()

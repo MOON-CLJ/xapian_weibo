@@ -72,8 +72,10 @@ if __name__ == '__main__':
 
         def cut_text(item):
             text = item['text'].encode('utf-8')
-            terms = cut(s, text)
+            terms_cx = cut(s, text, cx=True)
+            terms = [term for term, cx in terms_cx]
             item['terms'] = terms
+            item['terms_cx'] = terms_cx
             return item
         fill_field_funcs.append(cut_text)
     index_forever(xapian_indexer, receiver, controller, poller, sender=sender, fill_field_funcs=fill_field_funcs)

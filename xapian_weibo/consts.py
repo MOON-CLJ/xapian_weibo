@@ -41,19 +41,19 @@ elif XAPIAN_INDEX_SCHEMA_VERSION == 5:
     XAPIAN_EXTRA_FIELD = 'sentiment'
 
 
-PROD_VENV = 0
+PROD_VENV = 1
 FROM_BSON = 0
 FROM_CSV = 1
-REALTIME_WORK_ON = 0
+REALTIME_WORK_ON = 1
 if PROD_VENV:
-    XAPIAN_DATA_DIR = '/var/lib/xapian_weibo'
-    XAPIAN_STUB_FILE_DIR = '/var/lib/xapian_weibo/stub'
+    XAPIAN_DATA_DIR = '/media/data/realtime'
+    XAPIAN_STUB_FILE_DIR = '/media/data/realtime/stub'
     if XAPIAN_INDEX_SCHEMA_VERSION == 1:
         XAPIAN_DB_FOLDER_PREFIX = '/var/lib/xapian_weibo/20130000'
-    XAPIAN_ZMQ_VENT_HOST = '219.224.135.61'  # 分发机器的ip
+    XAPIAN_ZMQ_VENT_HOST = '192.168.2.31'  # 分发机器的ip
     XAPIAN_FLUSH_DB_SIZE = 20000
     XAPIAN_ZMQ_WORK_KILL_INTERVAL = 3600  # 1 hour
-    REDIS_HOST = '219.224.135.61'
+    REDIS_HOST = '192.168.2.31'
     REDIS_PORT = 6379
     if FROM_BSON:
         if XAPIAN_INDEX_SCHEMA_VERSION == 2:
@@ -69,7 +69,7 @@ if PROD_VENV:
             raise
     if FROM_CSV:
         if XAPIAN_INDEX_SCHEMA_VERSION == 5:
-            CSV_FILEPATH = '/home/arthas/dev/original_data/MB_QL_9_10_NODE10.csv'  # 文件夹时末尾需要/
+            CSV_FILEPATH = '/home/ubuntu12/dev/original_data/csv/20130927'  # 文件夹时末尾需要/
 else:
     XAPIAN_DATA_DIR = '/home/arthas/dev/data'
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/data/stub'
