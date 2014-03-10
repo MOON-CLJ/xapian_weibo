@@ -8,8 +8,8 @@ sys.path.append(ab_path)
 
 from consts import XAPIAN_INDEX_SCHEMA_VERSION, XAPIAN_ZMQ_VENT_HOST, \
     XAPIAN_ZMQ_PROXY_BACKEND_PORT, \
-    REDIS_HOST, REDIS_PORT
-from utils import get_now_db_no, single_word_whitelist
+    REDIS_HOST, REDIS_PORT, REDIS_CONF_MAX_DB_NO
+from utils import single_word_whitelist
 
 import zmq
 import redis
@@ -31,12 +31,8 @@ DOMAIN_SENTIMENT_COUNT = "domain:%s:%s"  # domain, sentiment,
 DOMAIN_TOP_WEIBO_REPOSTS_COUNT_RANK = "domain:%s:top_weibo_rank:%s"  # domain, sentiment,
 DOMAIN_TOP_KEYWORDS_RANK = 'domain:%s:top_keywords:%s'  # domain, sentiment,
 SENTIMENT_TOPIC_KEYWORDS = "sentiment_topic_keywords"
-
-# realtime_identify_work
 USER_DOMAIN = "user_domain" # user domain hash,
-USER_NAME_UID = "user_name_uid" # user name-uid hash
-GLOBAL_ACTIVE_COUNT = "global_active_%s" # date as '20131227',
-GLOBAL_IMPORTANT_COUNT = "global_important_%s" # date as '20131227',
+GLOBAL_DB_TS = "global_db_start_ts" # start ts
 
 # profile_keywords_cal
 USER_KEYWORDS = "user_keywords_%s" # user keywords sorted set, uid,
@@ -53,6 +49,23 @@ def get_keywords():
     return keywords_set
 
 
+def ts_div_fifteen_m(ts):
+    return int(ts) / (15 * 60)
+
+def get_now_db_no_by_weibo_ts(ts):
+    return ts_div_fifteen_m(ts) % (REDIS_CONF_MAX_DB_NO - 1) + 1
+
+
+def get_now_accepted_tsrange(ts):
+    # start_ts: timestamp of 15:00, end_ts: timestamp of 15: 15
+    start_ts, end_ts = get_now_tsrange(ts)
+    return int(start_ts) - 15 * 60, int(end_ts) + 15 * 60
+
+
+def get_now_tsrange(ts):
+    return int(ts) - int(ts) % (15 * 60), int(ts) - int(ts) % (15 * 60) + 15 * 60
+
+
 def user2domain(uid):
     domainid = global_r0.hget(USER_DOMAIN, str(uid))
     if not domainid:
@@ -61,20 +74,13 @@ def user2domain(uid):
     return int(domainid)
 
 
-def username2uid(name):
-    uid = global_r0.hget(USER_NAME_UID, str(name))
-    if not uid:
-        return None
-
-    return int(uid)
-
-
 def get_now_datestr():
     return datetime.datetime.now().strftime("%Y%m%d")
 
 
 def realtime_sentiment_cal(item):
     sentiment = item['sentiment']
+    timestamp = item['timestamp']
     # global sentiment
     global_r.incr(GLOBAL_SENTIMENT_COUNT % sentiment)
 
@@ -121,34 +127,6 @@ def realtime_sentiment_cal(item):
             global_r.zincrby(DOMAIN_TOP_KEYWORDS_RANK % (domain, sentiment), t, 1.0)
 
 
-def realtime_identify_cal(item):
-    now_datestr = get_now_datestr()
-    uid = item['user']
-    reposts_count = item['reposts_count']
-    comments_count = item['comments_count']
-    attitudes_count = 0
-    # attitudes_count = item['attitudes_count'] # 此字段缺失
-    important = reposts_count + comments_count + attitudes_count
-
-    # 更新该条微博发布用户的重要度、活跃度
-    global_r0.hincrby(GLOBAL_ACTIVE_COUNT % now_datestr, uid)
-    global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, uid, important)
-    
-    # 更新直接转发或原创用户的重要度 + 1, 活跃度不变, 有可能高估了用户的重要度
-    retweeted_uid = item['retweeted_uid']
-    if retweeted_uid != 0:
-        # 该条微博为转发微博
-        text = item['text']
-        repost_user = re.search('//@([a-zA-Z-_\u0391-\uFFE5]+)', text)
-        if repost_user:
-            direct_uid = username2uid(repost_user)
-
-            if direct_uid:
-                retweeted_uid = direct_uid
-
-        global_r0.hincrby(GLOBAL_IMPORTANT_COUNT % now_datestr, retweeted_uid)
-
-
 def realtime_profile_keywords_cal(item):
     terms_cx = item['terms_cx']
     uid = item['user']
@@ -171,23 +149,36 @@ if __name__ == '__main__':
 
     if SCHEMA_VERSION in [2, 5]:
         # prepare
-        global_keywords = get_keywords()
-        now_db_no = get_now_db_no()
+        item = receiver.recv_json()
+        item_timestamp = item['timestamp']
+        now_db_start_ts, now_db_end_ts = get_now_tsrange(item_timestamp)
+        now_db_no = get_now_db_no_by_weibo_ts(item_timestamp)
         print "redis db no now", now_db_no
+        global_keywords = get_keywords()
         global_r = _default_redis(db=now_db_no)
+        global_r.set(GLOBAL_DB_TS, now_db_start_ts)
         global_r0 = _default_redis()
 
         while 1:
-            new_db_no = get_now_db_no()
+            item = receiver.recv_json()
+            item_timestamp = item['timestamp']
+
+            now_db_start_ts = global_r.get(GLOBAL_DB_TS)
+            now_a_start_ts, now_a_end_ts = get_now_accepted_tsrange(now_db_start_ts)
+            if int(item_timestamp) < now_a_start_ts and int(item_timestamp) >= now_a_end_ts:
+                # 超出接受范围，抛弃该条微博
+                continue
+
+            new_db_no = get_now_db_no_by_weibo_ts(item_timestamp)
             if new_db_no != now_db_no:
+                now_db_start_ts, now_db_end_ts = get_now_tsrange(item_timestamp)
+                global_r.set(GLOBAL_DB_TS, now_db_start_ts)
                 global_keywords = get_keywords()
                 now_db_no = new_db_no
                 print "redis db no now", now_db_no
                 global_r = _default_redis(db=now_db_no)
 
-            item = receiver.recv_json()
             realtime_sentiment_cal(item)
-            #realtime_identify_cal(item)
             realtime_profile_keywords_cal(item)
     else:
         while 1:
