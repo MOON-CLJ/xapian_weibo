@@ -69,7 +69,7 @@ if PROD_VENV:
             raise
     if FROM_CSV:
         if XAPIAN_INDEX_SCHEMA_VERSION == 5:
-            CSV_FILEPATH = '/media/data/original_data/csv/20130928/'  # 文件夹时末尾需要/
+            CSV_FILEPATH = '/media/data/original_data/csv/20130922_cut/'  # 文件夹时末尾需要/
 else:
     XAPIAN_DATA_DIR = '/home/arthas/dev/data'
     XAPIAN_STUB_FILE_DIR = '/home/arthas/dev/data/stub'

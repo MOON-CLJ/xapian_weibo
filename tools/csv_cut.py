@@ -153,8 +153,6 @@ def main():
             if itemdict:
                 item_timestamp = itemdict['timestamp']
                 csv_no = get_now_csv_no(item_timestamp)
-                if csv_no < 10 and csv_no >= 1:
-                    csv_no = '0' + str(csv_no) 
 
                 fw = open(dest_path + str(csv_no) + '.csv', 'a')
                 fw.write(line + '\n')

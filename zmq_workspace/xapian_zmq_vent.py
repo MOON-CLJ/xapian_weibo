@@ -61,8 +61,9 @@ if __name__ == '__main__':
             total_cost = 0
             count = 0
             files = os.listdir(CSV_FILEPATH)
+            files = sorted([int(f[:-4]) for f in files])
             for f in files:
-                csv_input = load_items_from_csv(os.path.join(CSV_FILEPATH, f))
+                csv_input = load_items_from_csv(os.path.join(CSV_FILEPATH, str(f) + '.csv'))
                 load_origin_data_func = csv_input.__iter__
                 tmp_count, tmp_cost = send_all(load_origin_data_func, sender, pre_funcs=pre_funcs)
                 total_cost += tmp_cost
