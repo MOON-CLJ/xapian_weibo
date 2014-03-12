@@ -135,12 +135,12 @@ def get_now_csv_no(ts):
 
 
 def main():
-    # need to create directory csv_dir_path + './%s_merge/' % now_datestr
+    # need to create directory csv_dir_path + './%s_cut/' % now_datestr
     csv_dir_path = '/media/data/original_data/csv/'
     now_datestr = sys.argv[1]
 
     source_path = csv_dir_path + '%s/' % now_datestr
-    dest_path = csv_dir_path + '%s_merge/' % now_datestr
+    dest_path = csv_dir_path + '%s_cut/' % now_datestr
 
     source_files = os.listdir(source_path)
     count = 0
@@ -153,6 +153,8 @@ def main():
             if itemdict:
                 item_timestamp = itemdict['timestamp']
                 csv_no = get_now_csv_no(item_timestamp)
+                if csv_no < 10 and csv_no >= 1:
+                    csv_no = '0' + str(csv_no) 
 
                 fw = open(dest_path + str(csv_no) + '.csv', 'a')
                 fw.write(line + '\n')
