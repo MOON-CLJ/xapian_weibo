@@ -5,6 +5,7 @@ from bs_input import KeyValueBSONInput
 from datetime import datetime
 import time
 import zmq
+import sys
 
 if FROM_BSON:
     from consts import BSON_FILEPATH
@@ -79,7 +80,11 @@ def index_forever(xapian_indexer, receiver, controller, poller, sender=None, fil
                     item = func(item)
             xapian_indexer.add_or_update(item)
             if sender:
-                sender.send_json(item)
+                try:
+                    sender.send_json(item)
+                except:
+                    print item
+            
             count += 1
             if count % XAPIAN_FLUSH_DB_SIZE == 0:
                 te = time.time()
