@@ -51,7 +51,7 @@ def get_keywords():
 def set_now_accepted_tsrange(ts):
     start_ts, end_ts = get_now_tsrange(ts)
     a_start_ts = global_r0.get(NOW_DB_START_TS)
-    if not a_start_ts or a_start_ts < start_ts:
+    if not a_start_ts or int(a_start_ts) < start_ts:
         global_r0.set(NOW_DB_START_TS, start_ts)
         print 'set accepted ts range: ', get_now_accepted_tsrange()
 
@@ -60,7 +60,7 @@ def get_now_accepted_tsrange():
     # start_ts: timestamp of 15:00, end_ts: timestamp of 15: 15
     a_start_ts = global_r0.get(NOW_DB_START_TS)
     start_ts, end_ts = get_now_tsrange(a_start_ts)
-    return start_ts - 2 * 15 * 60, end_ts
+    return start_ts - 15 * 60, end_ts + 15 * 60
 
 
 def get_now_tsrange(ts):
@@ -168,7 +168,6 @@ if __name__ == '__main__':
             now_a_start_ts, now_a_end_ts = get_now_accepted_tsrange()
             if int(item_timestamp) < now_a_start_ts or int(item_timestamp) >= now_a_end_ts:
                 # 超出接受范围，抛弃该条微博
-                print 'beyond ts range: ', now_a_start_ts, now_a_end_ts, item_timestamp
                 continue
 
             new_db_no = get_now_db_no(item_timestamp)
